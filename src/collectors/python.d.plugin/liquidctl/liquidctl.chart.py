@@ -157,7 +157,7 @@ CHART_PROTO = [
         type=ChartType.TIME,
         name='uptime',
         title='Uptime',
-        unit_name='s',
+        unit_name='seconds',
         store_ratio=None,
         limits=None,
     ),
