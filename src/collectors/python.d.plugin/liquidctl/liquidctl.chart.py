@@ -66,6 +66,7 @@ class ChartProto:
     unit_name: str
     store_ratio: Optional[Rational] = None
     limits: Optional[tuple[int, int]] = None
+    skip_words: Optional[tuple[str, ...]] = None
 
     def get_store_ratio(self) -> Rational:
         if self.store_ratio is not None:
@@ -106,6 +107,7 @@ CHART_PROTO = [
         unit_name='Celsius',
         store_ratio=Fraction(1000),
         limits=(-200, 200),
+        skip_words=('temperature', 'temp',)
     ),
     ChartProto(
         type=ChartType.FAN,
@@ -113,6 +115,7 @@ CHART_PROTO = [
         title='Fans speed',
         unit_name='Rotations/min',
         limits=(0, 10000),
+        skip_words=('speed',)
     ),
     ChartProto(
         type=ChartType.POWER,
@@ -121,6 +124,7 @@ CHART_PROTO = [
         unit_name='Watt',
         store_ratio=Fraction(1000),
         limits=(0, 10000),
+        skip_words=('power',)
     ),
     ChartProto(
         type=ChartType.VOLTAGE,
@@ -129,6 +133,7 @@ CHART_PROTO = [
         unit_name='Watt',
         store_ratio=Fraction(1000),
         limits=(0, 1000),
+        skip_words=('voltage', 'rail')
     ),
     ChartProto(
         type=ChartType.CURRENT,
@@ -137,6 +142,7 @@ CHART_PROTO = [
         unit_name='Watt',
         store_ratio=Fraction(1000),
         limits=(0, 1000),
+        skip_words=('current',)
     ),
     ChartProto(
         type=ChartType.EFFICIENCY,
@@ -145,6 +151,7 @@ CHART_PROTO = [
         unit_name='%',
         store_ratio=Fraction(1000),
         limits=(0, 100),
+        skip_words=('efficiency',)
     ),
     ChartProto(
         type=ChartType.TIME,
@@ -301,8 +308,16 @@ class Service(SimpleService):
         return p.stdout
 
     @staticmethod
-    def _normalize(arg: str) -> str:
+    def _normalize(arg: str, proto: ChartProto = None) -> str:
         r = arg.casefold()
+
+        if proto is not None and proto.skip_words is not None:
+            r = ' '.join([
+                word
+                for word in r.split()
+                if word not in proto.skip_words
+            ])
+
         r = re.sub(r'\+([0-9.]+v)', r'\1', r)
         r = re.sub(r'([0-9]+)\.([0-9]+)v', r'\1v\2', r)
         r = re.sub(r'[^a-z0-9]+', '-', r)
@@ -325,10 +340,6 @@ class Service(SimpleService):
 
             # process device metrics (items)
             for item in device["status"]:
-                # build item metadata
-                item_label = item["key"]
-                item_id = self._normalize(item_label)
-
                 # deduce metric type from its unit and find relevant chart prototype
                 try:
                     item_unit = InputUnit.from_item(item)
@@ -336,6 +347,10 @@ class Service(SimpleService):
                 except ErrorException as e:
                     self.warning(f'Skipping item: {e}')
                     continue
+
+                # build item metadata
+                item_label = item["key"]
+                item_id = self._normalize(item_label, chart_proto)
 
                 # build item value
                 item_value = item["value"]
