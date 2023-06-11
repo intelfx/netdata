@@ -271,7 +271,8 @@ class ChartBuilder:
 
     def build_data(self) -> Optional[dict[str, int]]:
         return {
-            ChartBuilder.make_dim_id(chart, data_point): data_point.value
+            ChartBuilder.make_dim_id(chart, data_point):
+                data_point.value * chart.proto.get_store_ratio()
             for chart, data in self.data_points.items()
             for data_point in data
         } or None
