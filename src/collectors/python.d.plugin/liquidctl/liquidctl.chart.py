@@ -360,8 +360,6 @@ class Service(SimpleService):
                     self.warning(f'Bad item value (expected within {chart_proto.limits[0]} and {chart_proto.limits[1]}), skipping: {item}')
                     continue
 
-                chart_value = item_value * item_unit.get_base_ratio()
-
                 # submit metric
                 chart_builder.submit(
                     proto=chart_proto,
@@ -369,7 +367,7 @@ class Service(SimpleService):
                     device_label=device_label,
                     item_id=item_id,
                     item_label=item_label,
-                    value=chart_value,
+                    value=item_value * item_unit.get_base_ratio(),
                 )
 
         chart_builder.build_charts()
