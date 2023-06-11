@@ -302,7 +302,11 @@ class Service(SimpleService):
 
     @staticmethod
     def _normalize(arg: str):
-        return re.sub('[^a-z0-9]+', '-', arg.casefold())
+        r = arg.casefold()
+        r = re.sub(r'\+([0-9.]+v)', r'\1', r)
+        r = re.sub(r'([0-9]+)\.([0-9]+)v', r'\1v\2', r)
+        r = re.sub(r'[^a-z0-9]+', '-', r)
+        return r
 
     def _get_data(self):
         input = json.loads(self._run_cmd(['status', '--json']))
