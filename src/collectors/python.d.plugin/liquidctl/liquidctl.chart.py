@@ -318,6 +318,7 @@ class Service(SimpleService):
                 if word not in proto.skip_words
             ])
 
+        r = re.sub(r'([a-z]+) ([0-9]+)', r'\1\2', r)
         r = re.sub(r'\+([0-9.]+v)', r'\1', r)
         r = re.sub(r'([0-9]+)\.([0-9]+)v', r'\1v\2', r)
         r = re.sub(r'[^a-z0-9]+', '-', r)
