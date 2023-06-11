@@ -128,18 +128,18 @@ CHART_PROTO = [
     ),
     ChartProto(
         type=ChartType.VOLTAGE,
-        name='power',
-        title='Power',
-        unit_name='Watt',
+        name='voltage',
+        title='Voltage',
+        unit_name='Volt',
         store_ratio=Fraction(1000),
         limits=(0, 1000),
         skip_words=('voltage', 'rail')
     ),
     ChartProto(
         type=ChartType.CURRENT,
-        name='power',
-        title='Power',
-        unit_name='Watt',
+        name='current',
+        title='Current',
+        unit_name='Ampere',
         store_ratio=Fraction(1000),
         limits=(0, 1000),
         skip_words=('current',)
