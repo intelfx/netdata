@@ -349,9 +349,7 @@ ENDIF()
 
 # -----------------------------------------------------------------------------
 # Detect ml dependencies
-file(STRINGS "${CMAKE_SOURCE_DIR}/config.h" DEFINE_ENABLE_ML REGEX "^#define ENABLE_ML 1$")
-IF(DEFINE_ENABLE_ML MATCHES ".+" AND
-   EXISTS "${CMAKE_SOURCE_DIR}/ml/dlib/dlib/all/source.cpp")
+IF(EXISTS "${CMAKE_SOURCE_DIR}/ml/dlib/dlib/all/source.cpp")
     set(ENABLE_ML True)
     list(APPEND NETDATA_COMMON_CFLAGS "-DDLIB_NO_GUI_SUPPORT")
     list(APPEND NETDATA_COMMON_INCLUDE_DIRS "ml/dlib")
