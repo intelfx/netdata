@@ -215,9 +215,16 @@ class ChartBuilder:
             'title': chart.proto.title,
             'units': chart.proto.unit_name,
             'family': chart.proto.name,  # basically "sidebar section name"
-            'context': f'liquidctl.{chart.proto.name}',  # basically "sidebar section id", must match family
+            'context': f'sensors.{chart.proto.name}',  # basically "sidebar section id", must match family
             'chart_type': 'line',
             'hidden': '',
+        }
+
+        chart_options_overrides = {
+            # normally job_name(), override this
+            'type': 'sensors',
+            # normally {type}.{id}, fix this up as well
+            'name': f'sensors.{chart_options["id"]}',
         }
 
         chart_lines = [{
@@ -235,6 +242,7 @@ class ChartBuilder:
                 [ line.get(key) for key in bases.charts.DIMENSION_PARAMS ]
                 for line in chart_lines
             ],
+            'overrides': chart_options_overrides,
         }
 
     def submit(
@@ -268,6 +276,8 @@ class ChartBuilder:
                 netdata_chart.add_dimension(dim)
             # update chart priority (cannot be set through add_chart())
             netdata_chart.params['priority'] = self.make_chart_priority(chart.proto)
+            # update chart type and name (cannot be set through add_chart())
+            netdata_chart.params.update(chart_spec['overrides'])
 
     def build_data(self) -> Optional[dict[str, int]]:
         return {
