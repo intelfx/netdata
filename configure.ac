@@ -1677,6 +1677,19 @@ if test "${build_target}" = "linux" -a "${enable_ebpf}" != "no"; then
         [#include <linux/bpf.h>]
     )
 
+
+    PKG_CHECK_MODULES(
+        [LIBBPF],
+        [libbpf],
+        [AC_CHECK_LIB(
+            [bpf],
+            [libbpf_get_error],
+            [have_libbpf=yes],
+            [have_libbpf=no]
+        )],
+        [have_libbpf=no]
+    )
+
     AC_CHECK_FILE(
         externaldeps/libbpf/libbpf.a,
         [have_libbpf=yes],
