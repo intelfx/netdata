@@ -5,6 +5,7 @@
 import json
 import re
 import subprocess
+from collections import defaultdict
 from enum import IntEnum
 from fractions import Fraction
 from numbers import Rational
@@ -184,7 +185,7 @@ class ChartBuilder:
 
     def __init__(self, service: 'Service'):
         self.service = service
-        self.data_points = dict()
+        self.data_points = defaultdict(list)
 
     @staticmethod
     def make_chart_id(chart: Chart):
@@ -252,10 +253,9 @@ class ChartBuilder:
         item_label: str,
         value: int,
     ):
-        self.data_points.setdefault(
-            Chart(proto=proto, device_id=device_id, device_label=device_label),
-            list()
-        ).append(
+        self.data_points[
+            Chart(proto=proto, device_id=device_id, device_label=device_label)
+        ].append(
             ChartDataPoint(dim_id=item_id, dim_label=item_label, value=value)
         )
 
