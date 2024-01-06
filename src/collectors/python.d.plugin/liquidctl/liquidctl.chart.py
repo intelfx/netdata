@@ -188,12 +188,10 @@ class ChartBuilder:
 
     @staticmethod
     def make_chart_id(chart: Chart):
-        # must match make_chart()
         return f'{chart.device_id}_{chart.proto.name}'
 
     @staticmethod
     def make_dim_id(chart: Chart, data_point: ChartDataPoint):
-        # must match make_chart()
         return f'{chart.device_id}_{data_point.dim_id}'
 
     @staticmethod
@@ -210,7 +208,7 @@ class ChartBuilder:
         """
         chart_options = {
             # 'type': job_name(), added in Service.charts.add_chart()
-            'id': f'{chart.device_id}_{chart.proto.name}',
+            'id': ChartBuilder.make_chart_id(chart),
             # 'name': f'{type}.{id}', overridden in Chart.__init__()
             'title': chart.proto.title,
             'units': chart.proto.unit_name,
@@ -228,7 +226,7 @@ class ChartBuilder:
         }
 
         chart_lines = [{
-            'id': f'{chart.device_id}_{data_point.dim_id}',
+            'id': ChartBuilder.make_dim_id(chart, data_point),
             'name': data_point.dim_label,
             'algorithm': 'absolute',
             'multiplier': chart.proto.get_store_ratio().denominator,
