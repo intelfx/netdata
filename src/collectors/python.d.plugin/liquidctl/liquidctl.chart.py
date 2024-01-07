@@ -193,7 +193,7 @@ class ChartBuilder:
 
     @staticmethod
     def make_dim_id(chart: Chart, data_point: ChartDataPoint):
-        return f'{chart.device_id}_{data_point.dim_id}'
+        return f'{chart.device_id}_{chart.proto.name}_{data_point.dim_id}'
 
     @staticmethod
     def make_chart(chart: Chart, data: list[ChartDataPoint]):
