@@ -75,6 +75,7 @@ include retroshare/Makefile.inc
 include riakkv/Makefile.inc
 include samba/Makefile.inc
 include sensors/Makefile.inc
+include liquidctl/Makefile.inc
 include smartd_log/Makefile.inc
 include spigotmc/Makefile.inc
 include squid/Makefile.inc
