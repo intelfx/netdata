@@ -358,7 +358,7 @@ class Service(SimpleService):
             # build device metadata
             device_label = device_json["description"]
             device_name = self._normalize(device_label)
-            device_id = device_name + '-' + os.path.basename(device_json["address"])
+            device_id = device_name
             device = Device(
                 bus=device_json["bus"],
                 address=device_json["address"],
@@ -368,7 +368,8 @@ class Service(SimpleService):
             )
 
             # see if we have duplicate ids
-            assert device_id not in device_seen
+            if device_id in device_seen:
+                raise ErrorException(f'Unsupported: multiple instances of "{device.label}" ({device_seen[device_id].address}, {device.address})')
             device_seen[device_id] = device
 
             # process device metrics (items)
