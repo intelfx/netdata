@@ -2841,6 +2841,7 @@ install(FILES
         src/collectors/python.d.plugin/riakkv/riakkv.conf
         src/collectors/python.d.plugin/samba/samba.conf
         src/collectors/python.d.plugin/sensors/sensors.conf
+        src/collectors/python.d.plugin/liquidctl/liquidctl.conf
         src/collectors/python.d.plugin/spigotmc/spigotmc.conf
         src/collectors/python.d.plugin/squid/squid.conf
         src/collectors/python.d.plugin/tomcat/tomcat.conf
@@ -2883,6 +2884,7 @@ install(FILES
         src/collectors/python.d.plugin/riakkv/riakkv.chart.py
         src/collectors/python.d.plugin/samba/samba.chart.py
         src/collectors/python.d.plugin/sensors/sensors.chart.py
+        src/collectors/python.d.plugin/liquidctl/liquidctl.chart.py
         src/collectors/python.d.plugin/spigotmc/spigotmc.chart.py
         src/collectors/python.d.plugin/squid/squid.chart.py
         src/collectors/python.d.plugin/tomcat/tomcat.chart.py
