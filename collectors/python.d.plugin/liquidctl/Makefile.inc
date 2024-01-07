@@ -9,5 +9,5 @@ dist_python_DATA       += liquidctl/liquidctl.chart.py
 dist_pythonconfig_DATA += liquidctl/liquidctl.conf
 
 # do not install these files, but include them in the distribution
-dist_noinst_DATA       += liquidctl/README.md liquidctl/Makefile.inc
+dist_noinst_DATA       += liquidctl/Makefile.inc
 
