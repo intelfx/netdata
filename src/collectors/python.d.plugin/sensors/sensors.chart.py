@@ -96,7 +96,8 @@ class Service(SimpleService):
         self.priority = 60000
 
     def get_data(self):
-        seen, data = dict(), dict()
+        seen: dict[str, dict[str, list]] = dict()
+        data: dict[str, int] = dict()
         try:
             for chip in sensors.ChipIterator():
                 chip_name = sensors.chip_snprintf_name(chip)
