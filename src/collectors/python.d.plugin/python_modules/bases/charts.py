@@ -20,6 +20,7 @@ CHART_CREATE = "CHART {type}.{id} '{name}' '{title}' '{units}' '{family}' '{cont
 CHART_OBSOLETE = "CHART {type}.{id} '{name}' '{title}' '{units}' '{family}' '{context}' " \
                  "{chart_type} {priority} {update_every} '{hidden} obsolete'\n"
 
+CLABEL_CREATE = "CLABEL '{key}' '{value}' '0'\n"
 CLABEL_COLLECT_JOB = "CLABEL '_collect_job' '{actual_job_name}' '0'\n"
 CLABEL_COMMIT = "CLABEL_COMMIT\n"
 
@@ -131,16 +132,17 @@ class Charts:
     def __nonzero__(self):
         return self.__bool__()
 
-    def add_chart(self, params):
+    def add_chart(self, params, labels: dict = None):
         """
         Create Chart instance and add it to the dict
 
         Manually adds job name, priority and update_every to params.
         :param params: <list>
+        :param labels: <dict>
         :return:
         """
         params = [self.job_name()] + params
-        new_chart = Chart(params)
+        new_chart = Chart(params, labels=labels)
 
         new_chart.params['update_every'] = self.get_update_every()
         new_chart.params['priority'] = self.priority
@@ -159,9 +161,10 @@ class Charts:
 class Chart:
     """Represent a chart"""
 
-    def __init__(self, params):
+    def __init__(self, params: list, *, labels: dict = None):
         """
         :param params: <list>
+        :param labels: <dict>
         """
         if not isinstance(params, list):
             raise ItemTypeError("'chart' must be a list type")
@@ -176,6 +179,7 @@ class Chart:
         hidden = str(self.params.get('hidden', ''))
         self.params['hidden'] = 'hidden' if hidden == 'hidden' else ''
 
+        self.labels = labels or dict()
         self.dimensions = list()
         self.variables = set()
         self.flags = ChartFlags()
@@ -245,7 +249,13 @@ class Chart:
         :return:
         """
         chart = CHART_CREATE.format(**self.params)
-        labels = CLABEL_COLLECT_JOB.format(**self.params) + CLABEL_COMMIT
+        labels = ''.join([
+            CLABEL_COLLECT_JOB.format(**self.params)
+        ] + [
+            CLABEL_CREATE.format(key=k, value=v) for k, v in self.labels.items()
+        ] + [
+            CLABEL_COMMIT
+        ])
         dimensions = ''.join([dimension.create() for dimension in self.dimensions])
         variables = ''.join([var.set(var.value) for var in self.variables if var])
 
