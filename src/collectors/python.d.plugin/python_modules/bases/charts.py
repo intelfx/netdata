@@ -252,7 +252,7 @@ class Chart:
         self.flags.push = False
         self.flags.created = True
 
-        safe_print(chart + labels + dimensions + variables)
+        safe_print(chart, labels, dimensions, variables)
 
     def can_be_updated(self, data):
         for dim in self.dimensions:
