@@ -98,10 +98,23 @@ class Service(SimpleService):
     def get_data(self):
         seen: dict[str, dict[str, list]] = dict()
         data: dict[str, int] = dict()
+        meta: dict[str, dict[str, str]] = dict()
         try:
             for chip in sensors.ChipIterator():
                 chip_name = sensors.chip_snprintf_name(chip)
                 seen[chip_name] = defaultdict(list)
+
+                # split chip_name by hand
+                chip_prefix = chip.prefix.decode('utf-8')
+                chip_address = chip_name.removeprefix(chip_prefix + '-')
+                assert chip_name != chip_address
+                chip_bus = chip_address.split('-', maxsplit=1)[0]
+                meta[chip_name] = {
+                    'name': chip_name,
+                    'prefix': chip_prefix,
+                    'address': chip_address,
+                    'bus': chip_bus,
+                }
 
                 for feat in sensors.FeatureIterator(chip):
                     if feat.type not in TYPE_MAP:
@@ -135,11 +148,11 @@ class Service(SimpleService):
             self.error(error)
             return None
 
-        self.update_sensors_charts(seen)
+        self.update_sensors_charts(seen, meta)
 
         return data or None
 
-    def update_sensors_charts(self, seen):
+    def update_sensors_charts(self, seen, meta):
         for chip_name, feat in seen.items():
             if self.chips and not any([chip_name.startswith(ex) for ex in self.chips]):
                 continue
@@ -152,8 +165,16 @@ class Service(SimpleService):
                 if chart_id in self.charts:
                     continue
 
+                chip_meta = meta[chip_name]
+                chip_labels = {
+                    'sensor_id': chip_meta['name'],
+                    'sensor_name': chip_meta['prefix'],
+                    'sensor_bus': chip_meta['bus'],
+                    'sensor_address': chip_meta['address'],
+                }
+
                 params = [chart_id] + list(CHARTS[feat_type]['options'])
-                new_chart = self.charts.add_chart(params)
+                new_chart = self.charts.add_chart(params, labels=chip_labels)
                 new_chart.params['priority'] = self.get_chart_priority(feat_type)
 
                 for name, label in sub_feat:
