@@ -96,43 +96,74 @@ def raise_sensor_error(errno, message=''):
 
 
 class BusId(Structure):
-    _fields_ = [("type", c_short),
-                ("nr", c_short)]
+    _fields_ = [
+        ("type", c_short),
+        ("nr", c_short),
+    ]
 
 
 class ChipName(Structure):
-    _fields_ = [("prefix", c_char_p),
-                ("bus", BusId),
-                ("addr", c_int),
-                ("path", c_char_p)]
+    prefix: bytes
+    bus: BusId
+    addr: int
+    path: bytes
+
+    _fields_ = [
+        ("prefix", c_char_p),
+        ("bus", BusId),
+        ("addr", c_int),
+        ("path", c_char_p),
+    ]
 
 
 class Feature(Structure):
-    _fields_ = [("name", c_char_p),
-                ("number", c_int),
-                ("type", c_int)]
+    name: bytes
+    number: int
+    type: int  # TODO: somehow convert to Feature.Type transparently
+
+    _fields_ = [
+        ("name", c_char_p),
+        ("number", c_int),
+        ("type", c_int),
+    ]
 
     # sensors_feature_type
-    IN = 0x00
-    FAN = 0x01
-    TEMP = 0x02
-    POWER = 0x03
-    ENERGY = 0x04
-    CURR = 0x05
-    HUMIDITY = 0x06
-    MAX_MAIN = 0x7
-    VID = 0x10
-    INTRUSION = 0x11
-    MAX_OTHER = 0x12
-    BEEP_ENABLE = 0x18
+    class Type(enum.IntEnum):
+        IN = 0x00
+        FAN = 0x01
+        TEMP = 0x02
+        POWER = 0x03
+        ENERGY = 0x04
+        CURR = 0x05
+        HUMIDITY = 0x06
+        MAX_MAIN = 0x7
+        VID = 0x10
+        INTRUSION = 0x11
+        MAX_OTHER = 0x12
+        BEEP_ENABLE = 0x18
+        MAX = 0x19
+        #UNKNOWN = ...  # TODO: need a way to get INT_MAX from ctypes
 
 
 class Subfeature(Structure):
-    _fields_ = [("name", c_char_p),
-                ("number", c_int),
-                ("type", c_int),
-                ("mapping", c_int),
-                ("flags", c_uint)]
+    name: bytes
+    number: int
+    type: int
+    mapping: int
+    flags: int  # TODO: convert to Subfeature.Flags
+
+    _fields_ = [
+        ("name", c_char_p),
+        ("number", c_int),
+        ("type", c_int),
+        ("mapping", c_int),
+        ("flags", c_uint),
+    ]
+
+    class Flags(enum.IntFlag):
+        MODE_R = 1
+        MODE_W = 2
+        COMPUTE_MAPPING = 4
 
 
 _hdl.sensors_get_detected_chips.restype = POINTER(ChipName)
@@ -144,10 +175,6 @@ _hdl.sensors_strerror.restype = c_char_p
 
 
 ### RAW API ###
-class SubfeatureFlags(enum.IntFlag):
-    MODE_R = 1
-    MODE_W = 2
-    COMPUTE_MAPPING = 4
 
 
 def init(cfg_file: str = None):
