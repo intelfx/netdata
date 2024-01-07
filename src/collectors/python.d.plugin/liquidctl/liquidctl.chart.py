@@ -167,10 +167,17 @@ CHART_PROTO_FROM_TYPE = { x.type: x for x in CHART_PROTO }
 
 
 @attrs.define(kw_only=True, frozen=True)
+class Device:
+    id: str  # normalized name (e. g. "corsair-commander-pro")
+    label: str  # human-readable name (e. g. "corsair Commander Pro")
+    bus: str  # raw (e. g. "hid")
+    address: str  # raw (e. g. "/dev/hidraw2")
+
+
+@attrs.define(kw_only=True, frozen=True)
 class Chart:
     proto: ChartProto
-    device_id: str
-    device_label: str
+    device: Device
 
 
 @attrs.define(kw_only=True)
@@ -189,11 +196,11 @@ class ChartBuilder:
 
     @staticmethod
     def make_chart_id(chart: Chart):
-        return f'{chart.device_id}_{chart.proto.name}'
+        return f'{chart.device.id}_{chart.proto.name}'
 
     @staticmethod
     def make_dim_id(chart: Chart, data_point: ChartDataPoint):
-        return f'{chart.device_id}_{chart.proto.name}_{data_point.dim_id}'
+        return f'{chart.device.id}_{chart.proto.name}_{data_point.dim_id}'
 
     @staticmethod
     def make_chart(chart: Chart, data: list[ChartDataPoint]):
@@ -247,14 +254,13 @@ class ChartBuilder:
     def submit(
         self,
         proto: ChartProto,
-        device_id: str,
-        device_label: str,
+        device: Device,
         item_id: str,
         item_label: str,
         value: float,
     ):
         self.data_points[
-            Chart(proto=proto, device_id=device_id, device_label=device_label)
+            Chart(proto=proto, device=device)
         ].append(
             ChartDataPoint(dim_id=item_id, dim_label=item_label, value=value)
         )
@@ -337,19 +343,25 @@ class Service(SimpleService):
         input = json.loads(self._run_cmd(['status', '--json']))
         chart_builder = ChartBuilder(self)
 
-        device_seen = dict()
-        for device in input:
+        device_seen: dict[str, Device] = dict()
+        for device_json in input:
             # build device metadata
-            device_label = device["description"]
+            device_label = device_json["description"]
             device_id = self._normalize(device_label)
+            device = Device(
+                bus=device_json["bus"],
+                address=device_json["address"],
+                label=device_json["description"],
+                id=device_id,
+            )
 
             # see if we have duplicate ids
             if device_id in device_seen:
-                raise ErrorException(f'Unsupported: multiple instances of "{device_label}" ({device_seen[device_id]["address"]}, {device["address"]})')
+                raise ErrorException(f'Unsupported: multiple instances of "{device.label}" ({device_seen[device_id].address}, {device.address})')
             device_seen[device_id] = device
 
             # process device metrics (items)
-            for item in device["status"]:
+            for item in device_json["status"]:
                 # deduce metric type from its unit and find relevant chart prototype
                 try:
                     item_unit = InputUnit.from_item(item)
@@ -371,8 +383,7 @@ class Service(SimpleService):
                 # submit metric
                 chart_builder.submit(
                     proto=chart_proto,
-                    device_id=device_id,
-                    device_label=device_label,
+                    device=device,
                     item_id=item_id,
                     item_label=item_label,
                     value=item_value * item_unit.get_base_ratio(),
