@@ -228,6 +228,13 @@ class ChartBuilder:
             'hidden': '',
         }
 
+        chart_labels = {
+            'sensor_id': chart.device.id,
+            'sensor_name': chart.device.name,
+            'sensor_bus': chart.device.bus,
+            'sensor_address': chart.device.address,
+        }
+
         chart_options_overrides = {
             # normally job_name(), override this
             'type': 'sensors',
@@ -246,6 +253,7 @@ class ChartBuilder:
 
         return {
             'options': [ chart_options.get(key) for key in bases.charts.CHART_PARAMS[1:] ],
+            'labels': chart_labels,
             'lines': [
                 [ line.get(key) for key in bases.charts.DIMENSION_PARAMS ]
                 for line in chart_lines
@@ -277,7 +285,7 @@ class ChartBuilder:
                 continue
 
             chart_spec = ChartBuilder.make_chart(chart, data)
-            netdata_chart = self.service.charts.add_chart(chart_spec['options'])
+            netdata_chart = self.service.charts.add_chart(chart_spec['options'], labels=chart_spec['labels'])
             for dim in chart_spec['lines']:
                 netdata_chart.add_dimension(dim)
             # update chart priority (cannot be set through add_chart())
