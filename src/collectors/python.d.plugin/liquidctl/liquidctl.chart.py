@@ -177,7 +177,7 @@ class Chart:
 class ChartDataPoint:
     dim_id: str
     dim_label: str
-    value: int
+    value: float
 
 
 class ChartBuilder:
@@ -251,7 +251,7 @@ class ChartBuilder:
         device_label: str,
         item_id: str,
         item_label: str,
-        value: int,
+        value: float,
     ):
         self.data_points[
             Chart(proto=proto, device_id=device_id, device_label=device_label)
@@ -280,7 +280,7 @@ class ChartBuilder:
     def build_data(self) -> Optional[dict[str, int]]:
         return {
             ChartBuilder.make_dim_id(chart, data_point):
-                data_point.value * chart.proto.get_store_ratio()
+                int(data_point.value * chart.proto.get_store_ratio())
             for chart, data in self.data_points.items()
             for data_point in data
         } or None
