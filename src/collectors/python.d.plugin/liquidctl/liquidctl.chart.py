@@ -3,6 +3,7 @@
 # Author: Ivan Shapovalov <intelfx@intelfx.name>
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
+import os.path
 import re
 import subprocess
 from collections import defaultdict
@@ -168,7 +169,8 @@ CHART_PROTO_FROM_TYPE = { x.type: x for x in CHART_PROTO }
 
 @attrs.define(kw_only=True, frozen=True)
 class Device:
-    id: str  # normalized name (e. g. "corsair-commander-pro")
+    id: str  # normalized unique string (e. g. "corsair-commander-pro-hidraw2")
+    name: str  # normalized non-unique name (e. g. "corsair-commander-pro")
     label: str  # human-readable name (e. g. "corsair Commander Pro")
     bus: str  # raw (e. g. "hid")
     address: str  # raw (e. g. "/dev/hidraw2")
@@ -347,17 +349,18 @@ class Service(SimpleService):
         for device_json in input:
             # build device metadata
             device_label = device_json["description"]
-            device_id = self._normalize(device_label)
+            device_name = self._normalize(device_label)
+            device_id = device_name + '-' + os.path.basename(device_json["address"])
             device = Device(
                 bus=device_json["bus"],
                 address=device_json["address"],
                 label=device_json["description"],
+                name=device_name,
                 id=device_id,
             )
 
             # see if we have duplicate ids
-            if device_id in device_seen:
-                raise ErrorException(f'Unsupported: multiple instances of "{device.label}" ({device_seen[device_id].address}, {device.address})')
+            assert device_id not in device_seen
             device_seen[device_id] = device
 
             # process device metrics (items)
