@@ -387,7 +387,7 @@ class Service(SimpleService):
                     item_unit = InputUnit.from_item(item)
                     chart_proto = ChartProto.from_unit(item_unit)
                 except ErrorException as e:
-                    if (key := (device_json["address"], item["key"])) not in self.unsupported_items:
+                    if not check and (key := (device_json["address"], item["key"])) not in self.unsupported_items:
                         self.unsupported_items.add(key)
                         self.warning(f'Skipping item: {e}')
                     continue
