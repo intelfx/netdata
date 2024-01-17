@@ -70,6 +70,11 @@ class ChartProto:
     limits: Optional[tuple[int, int]] = None
     skip_words: Optional[tuple[str, ...]] = None
 
+    # "sidebar section name"
+    family_name: Optional[str] = None
+    # "sidebar section id", ends up as {service}.{context_name}
+    context_name: Optional[str] = None
+
     def get_store_ratio(self) -> Rational:
         if self.store_ratio is not None:
             return self.store_ratio
@@ -114,6 +119,8 @@ CHART_PROTO = [
     ChartProto(
         type=ChartType.FAN,
         name='fan',
+        family_name='fans',
+        context_name='fan',
         title='Fans speed',
         unit_name='Rotations/min',
         limits=(0, 10000),
@@ -222,8 +229,8 @@ class ChartBuilder:
             # 'name': f'{type}.{id}', overridden in Chart.__init__()
             'title': chart.proto.title,
             'units': chart.proto.unit_name,
-            'family': chart.proto.name,  # basically "sidebar section name"
-            'context': f'sensors.{chart.proto.name}',  # basically "sidebar section id", must match family
+            'family': chart.proto.family_name or chart.proto.name,
+            'context': f'sensors.{chart.proto.context_name or chart.proto.name}',
             'chart_type': 'line',
             'hidden': '',
         }
