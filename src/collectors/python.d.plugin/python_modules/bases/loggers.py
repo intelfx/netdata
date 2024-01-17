@@ -7,6 +7,7 @@ import logging
 import os
 import stat
 import traceback
+import syslog
 
 from sys import exc_info
 
@@ -27,6 +28,24 @@ LOGGING_LEVELS = {
     'DEBUG': logging.DEBUG,
     'NOTSET': logging.NOTSET,
 }
+
+SYSLOG_LEVELS = {
+    logging.CRITICAL: syslog.LOG_CRIT,
+    logging.ERROR: syslog.LOG_ERR,
+    logging.WARNING: syslog.LOG_WARNING,
+    logging.INFO: syslog.LOG_INFO,
+    logging.DEBUG: syslog.LOG_DEBUG,
+}
+
+
+class JournaldFilter(logging.Filter):
+    def filter(self, record):
+        syslog_level = SYSLOG_LEVELS.get(record.levelno)
+        if syslog_level is not None:
+            record.levelprefix = f'<{syslog_level}>'
+        else:
+            record.levelprefix = ''
+        return True
 
 
 def is_stderr_connected_to_journal():
@@ -52,10 +71,13 @@ is_journal = is_stderr_connected_to_journal()
 
 DEFAULT_LOG_LINE_FORMAT = '%(asctime)s: %(name)s %(levelname)s: %(message)s'
 PYTHON_D_LOG_LINE_FORMAT = '%(asctime)s: %(name)s %(levelname)s: %(module_name)s[%(job_name)s]: %(message)s'
+DEFAULT_HANDLER = logging.StreamHandler
+DEFAULT_FILTER = None
 
 if is_journal:
-    DEFAULT_LOG_LINE_FORMAT = '%(name)s %(levelname)s: %(message)s'
-    PYTHON_D_LOG_LINE_FORMAT = '%(name)s %(levelname)s: %(module_name)s[%(job_name)s]: %(message)s '
+    DEFAULT_LOG_LINE_FORMAT = '%(levelprefix)s%(name)s: %(message)s'
+    PYTHON_D_LOG_LINE_FORMAT = '%(levelprefix)s%(name)s: %(module_name)s[%(job_name)s]: %(message)s '
+    DEFAULT_FILTER = JournaldFilter
 
 DEFAULT_LOG_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 PYTHON_D_LOG_NAME = 'python.d'
@@ -83,13 +105,16 @@ class BaseLogger(object):
             logger_name,
             log_fmt=DEFAULT_LOG_LINE_FORMAT,
             date_fmt=DEFAULT_LOG_TIME_FORMAT,
-            handler=logging.StreamHandler,
+            handler=DEFAULT_HANDLER,
+            filter=DEFAULT_FILTER,
     ):
         self.logger = logging.getLogger(logger_name)
         self._muted = False
         if not self.has_handlers():
             self.severity = 'INFO'
             self.logger.addHandler(handler())
+            if filter is not None:
+                self.logger.addFilter(filter())
             self.set_formatter(fmt=log_fmt, date_fmt=date_fmt)
 
     def __repr__(self):
