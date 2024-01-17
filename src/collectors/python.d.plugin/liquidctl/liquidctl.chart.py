@@ -293,6 +293,8 @@ class ChartBuilder:
 
             chart_spec = ChartBuilder.make_chart(chart, data)
             netdata_chart = self.service.charts.add_chart(chart_spec['options'], labels=chart_spec['labels'])
+            assert chart_id == netdata_chart.id
+
             for dim in chart_spec['lines']:
                 netdata_chart.add_dimension(dim)
             # update chart priority (cannot be set through add_chart())
