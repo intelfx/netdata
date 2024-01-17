@@ -32,7 +32,7 @@ SYSLOG_LEVELS = {
     logging.CRITICAL: syslog.LOG_CRIT,
     logging.ERROR: syslog.LOG_ERR,
     logging.WARNING: syslog.LOG_WARNING,
-    logging.INFO: syslog.LOG_INFO,
+    logging.INFO: syslog.LOG_NOTICE,
     logging.DEBUG: syslog.LOG_DEBUG,
 }
 
