@@ -17,13 +17,14 @@ except ImportError:
 
 from bases.collection import on_try_except_finally, unicode_str
 
+# logging.getLevelNamesMapping() but it's >=3.11
 LOGGING_LEVELS = {
-    'CRITICAL': 50,
-    'ERROR': 40,
-    'WARNING': 30,
-    'INFO': 20,
-    'DEBUG': 10,
-    'NOTSET': 0,
+    'CRITICAL': logging.CRITICAL,
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+    'NOTSET': logging.NOTSET,
 }
 
 
