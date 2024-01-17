@@ -318,9 +318,9 @@ class Service(SimpleService):
         self.use_sudo = configuration.get('use_sudo', True)
         self.command = configuration.get('command', Service.LIQUIDCTL).split()
         self.sudo = configuration.get('sudo', Service.SUDO).split() if self.use_sudo else None
+        self.priority = self.charts.priority  # remember initial priority as we assign it ourselves
         self.order = list()
         self.definitions = dict()
-        self.priority = 60000
         self.unsupported_items = set()
 
     def _run_cmd(self, args):
@@ -427,7 +427,6 @@ class Service(SimpleService):
             return None
 
     def check(self):
-        self.priority = self.charts.priority
         try:
             return bool(self._get_data(check=True) and self.charts)
         except:
