@@ -321,6 +321,7 @@ class Service(SimpleService):
         self.order = list()
         self.definitions = dict()
         self.priority = 60000
+        self.unsupported_items = set()
 
     def _run_cmd(self, args):
         cmdline = list()
@@ -386,7 +387,9 @@ class Service(SimpleService):
                     item_unit = InputUnit.from_item(item)
                     chart_proto = ChartProto.from_unit(item_unit)
                 except ErrorException as e:
-                    self.warning(f'Skipping item: {e}')
+                    if (key := (device_json["address"], item["key"])) not in self.unsupported_items:
+                        self.unsupported_items.add(key)
+                        self.warning(f'Skipping item: {e}')
                     continue
 
                 # build item metadata
