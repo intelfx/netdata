@@ -357,7 +357,7 @@ class Service(SimpleService):
         r = re.sub(r'[^a-z0-9]+', '-', r)
         return r
 
-    def _get_data(self):
+    def _get_data(self, *, check: bool):
         input = json.loads(self._run_cmd(['status', '--json']))
         chart_builder = ChartBuilder(self)
 
@@ -416,7 +416,7 @@ class Service(SimpleService):
 
     def get_data(self):
         try:
-            return self._get_data()
+            return self._get_data(check=False)
         except NoDataException:
             return None
         except ErrorException as e:
@@ -428,4 +428,7 @@ class Service(SimpleService):
 
     def check(self):
         self.priority = self.charts.priority
-        return bool(self.get_data() and self.charts)
+        try:
+            return bool(self._get_data(check=True) and self.charts)
+        except:
+            return None
