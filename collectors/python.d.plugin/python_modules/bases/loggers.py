@@ -49,12 +49,12 @@ def is_stderr_connected_to_journal():
 
 is_journal = is_stderr_connected_to_journal()
 
-DEFAULT_LOG_LINE_FORMAT = '%(asctime)s: %(name)s %(levelname)s : %(message)s'
-PYTHON_D_LOG_LINE_FORMAT = '%(asctime)s: %(name)s %(levelname)s: %(module_name)s[%(job_name)s] : %(message)s'
+DEFAULT_LOG_LINE_FORMAT = '%(asctime)s: %(name)s %(levelname)s: %(message)s'
+PYTHON_D_LOG_LINE_FORMAT = '%(asctime)s: %(name)s %(levelname)s: %(module_name)s[%(job_name)s]: %(message)s'
 
 if is_journal:
-    DEFAULT_LOG_LINE_FORMAT = '%(name)s %(levelname)s : %(message)s'
-    PYTHON_D_LOG_LINE_FORMAT = '%(name)s %(levelname)s: %(module_name)s[%(job_name)s] : %(message)s '
+    DEFAULT_LOG_LINE_FORMAT = '%(name)s %(levelname)s: %(message)s'
+    PYTHON_D_LOG_LINE_FORMAT = '%(name)s %(levelname)s: %(module_name)s[%(job_name)s]: %(message)s '
 
 DEFAULT_LOG_TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 PYTHON_D_LOG_NAME = 'python.d'
