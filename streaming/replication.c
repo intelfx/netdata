@@ -893,6 +893,28 @@ bool replicate_chart_request(send_command callback, void *callback_data, RRDHOST
             // we don't have any data, the gap is the max timeframe we are allowed to replicate
             r.gap.from = r.local_db.wall_clock_time - r.host->rrdpush_seconds_to_replicate;
 
+        int pad = snprintf(
+            NULL,
+            0,
+            "REPLICATION: 'host:%s/chart:%s':",
+            rrdhost_hostname(r.st->rrdhost),
+            rrdset_id(r.st)
+        );
+        nd_log(
+            NDLS_DAEMON,
+            NDLP_NOTICE,
+            "REPLICATION: 'host:%s/chart:%s':   we want from %s",
+            rrdhost_hostname(r.st->rrdhost),
+            rrdset_id(r.st),
+            ctime(&r.gap.from)
+        );
+        nd_log(
+            NDLS_DAEMON,
+            NDLP_NOTICE,
+            "%*s child has from %s",
+            pad, "",
+            ctime(&r.child_db.first_entry_t)
+        );
     }
     else {
         // we had sent a request - let's continue at the point we left it
