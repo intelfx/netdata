@@ -263,7 +263,7 @@ fi
 # C++ version check
 
 # Check for C++17 support (optional)
-# AX_CXX_COMPILE_STDCXX(17, noext, optional)
+AX_CXX_COMPILE_STDCXX(17, noext, optional)
 
 if test "x$HAVE_CXX17" != "x1"; then
   # Check for C++11 support (optional)
