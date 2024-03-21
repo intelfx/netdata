@@ -359,6 +359,14 @@ class Service(SimpleService):
         r = re.sub(r'[^a-z0-9]+', '-', r)
         return r
 
+    @staticmethod
+    def _cleanup(arg: str) -> str:
+        r = arg
+        # r = re.sub(r'\s\([^)]+\)', '', r)
+        # apparently, liquidctl devs do not consider their output stable
+        r = r.replace(" (broken)", "")
+        return r
+
     def _get_data(self, *, check: bool):
         input = json.loads(self._run_cmd(['status', '--json']))
         chart_builder = ChartBuilder(self)
@@ -366,13 +374,14 @@ class Service(SimpleService):
         device_seen: dict[str, Device] = dict()
         for device_json in input:
             # build device metadata
-            device_label = device_json["description"]
+            device_description = device_json["description"]
+            device_label = self._cleanup(device_description)
             device_name = self._normalize(device_label)
             device_id = device_name
             device = Device(
                 bus=device_json["bus"],
                 address=device_json["address"],
-                label=device_json["description"],
+                label=device_label,
                 name=device_name,
                 id=device_id,
             )
