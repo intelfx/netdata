@@ -4686,6 +4686,7 @@ if(ENABLE_PLUGIN_PYTHON)
           src/collectors/python.d.plugin/am2320/am2320.conf
           src/collectors/python.d.plugin/go_expvar/go_expvar.conf
           src/collectors/python.d.plugin/pandas/pandas.conf
+          src/collectors/python.d.plugin/sensors/sensors.conf
           src/collectors/python.d.plugin/traefik/traefik.conf
           COMPONENT plugin-pythond
           DESTINATION usr/lib/netdata/conf.d/python.d)
@@ -4694,6 +4695,7 @@ if(ENABLE_PLUGIN_PYTHON)
           src/collectors/python.d.plugin/am2320/am2320.chart.py
           src/collectors/python.d.plugin/go_expvar/go_expvar.chart.py
           src/collectors/python.d.plugin/pandas/pandas.chart.py
+          src/collectors/python.d.plugin/sensors/sensors.chart.py
           src/collectors/python.d.plugin/traefik/traefik.chart.py
           COMPONENT plugin-pythond
           DESTINATION usr/libexec/netdata/python.d)
