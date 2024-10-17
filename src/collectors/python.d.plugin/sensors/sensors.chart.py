@@ -186,10 +186,10 @@ class Service(SimpleService):
 
                 chip_meta = meta[chip_name]
                 chip_labels = {
-                    'sensor_id': chip_meta['name'],
-                    'sensor_name': chip_meta['prefix'],
-                    'sensor_bus': chip_meta['bus'],
-                    'sensor_address': chip_meta['address'],
+                    'sensor_name': chip_meta['name'],
+                    'sensor_type': chip_meta['prefix'],
+                    # 'sensor_bus': chip_meta['bus'],
+                    # 'sensor_address': chip_meta['address'],
                 }
 
                 params = [chart_id] + list(CHARTS[feat_type]['options'])
