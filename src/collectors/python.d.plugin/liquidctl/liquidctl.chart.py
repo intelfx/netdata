@@ -343,16 +343,8 @@ class Service(SimpleService):
         return p.stdout
 
     @staticmethod
-    def _normalize(arg: str, proto: ChartProto = None) -> str:
+    def _normalize(arg: str) -> str:
         r = arg.casefold()
-
-        if proto is not None and proto.skip_words is not None:
-            r = ' '.join([
-                word
-                for word in r.split()
-                if word not in proto.skip_words
-            ])
-
         r = re.sub(r'([a-z]+) ([0-9]+)', r'\1\2', r)
         r = re.sub(r'\+([0-9.]+v)', r'\1', r)
         r = re.sub(r'([0-9]+)\.([0-9]+)v', r'\1v\2', r)
@@ -360,11 +352,22 @@ class Service(SimpleService):
         return r
 
     @staticmethod
-    def _cleanup(arg: str) -> str:
+    def _cleanup_device(arg: str) -> str:
         r = arg
         # r = re.sub(r'\s\([^)]+\)', '', r)
         # apparently, liquidctl devs do not consider their output stable
         r = r.replace(" (broken)", "")
+        return r
+
+    @staticmethod
+    def _cleanup_label(arg: str, proto: ChartProto) -> str:
+        r = arg
+        if proto.skip_words:
+            r = ' '.join([
+                word
+                for word in r.split()
+                if word.casefold() not in proto.skip_words
+            ])
         return r
 
     def _get_data(self, *, check: bool):
@@ -375,7 +378,7 @@ class Service(SimpleService):
         for device_json in input:
             # build device metadata
             device_description = device_json["description"]
-            device_label = self._cleanup(device_description)
+            device_label = self._cleanup_device(device_description)
             device_name = self._normalize(device_label)
             device_id = device_name
             device = Device(
@@ -404,8 +407,8 @@ class Service(SimpleService):
                     continue
 
                 # build item metadata
-                item_label = item["key"]
-                item_id = self._normalize(item_label, chart_proto)
+                item_label = self._cleanup_label(item["key"], chart_proto)
+                item_id = self._normalize(item_label)
 
                 # build item value
                 item_value = item["value"]
