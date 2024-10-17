@@ -11,10 +11,10 @@ from third_party import lm_sensors as sensors
 ORDER = [
     'temperature',
     'fan',
-    'voltage',
-    'current',
     'power',
+    'voltage',
     'energy',
+    'current',
     'humidity',
 ]
 
