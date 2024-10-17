@@ -71,6 +71,14 @@ LIMITS = {
     'fan': [0, 65535]
 }
 
+SKIP_WORDS = {
+    'temperature': ('temperature', 'temp'),
+    'fan': ('speed',),
+    'power': ('power',),
+    'voltage': ('voltage', 'rail'),
+    'current': ('current',),
+}
+
 TYPE_MAP = {
     0: 'voltage',
     1: 'fan',
@@ -86,6 +94,17 @@ TYPE_MAP = {
     # 24: 'beep_enable'
 }
 
+def _cleanup(feat_name: str, feat_type: str) -> str:
+    r = feat_name
+
+    skip_words = SKIP_WORDS.get(feat_type)
+    if skip_words is not None:
+        r = ' '.join([
+            word
+            for word in r.split()
+            if word.casefold() not in skip_words
+        ])
+    return r
 
 class Service(SimpleService):
     def __init__(self, configuration=None, name=None):
@@ -122,7 +141,7 @@ class Service(SimpleService):
 
                     feat_type = TYPE_MAP[feat.type]
                     feat_name = str(feat.name.decode())
-                    feat_label = sensors.get_label(chip, feat)
+                    feat_label = _cleanup(sensors.get_label(chip, feat), feat_type)
                     feat_limits = LIMITS.get(feat_type)
                     sub_feat = next(sensors.SubFeatureIterator(chip, feat))  # current value
 
