@@ -236,10 +236,10 @@ class ChartBuilder:
         }
 
         chart_labels = {
-            'sensor_id': chart.device.id,
-            'sensor_name': chart.device.name,
-            'sensor_bus': chart.device.bus,
-            'sensor_address': chart.device.address,
+            'sensor_name': chart.device.id,
+            'sensor_type': chart.device.name,
+            # 'sensor_bus': chart.device.bus,
+            # 'sensor_address': chart.device.address,
         }
 
         chart_options_overrides = {
