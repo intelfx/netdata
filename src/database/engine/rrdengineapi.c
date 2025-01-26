@@ -1174,7 +1174,7 @@ int rrdeng_init(
 
     ctx->config.tier = (int)tier;
     ctx->config.page_type = tier_page_type[tier];
-    ctx->config.global_compress_alg = dbengine_default_compression();
+    ctx->config.global_compress_alg = dbengine_get_compression();
 
     strncpyz(ctx->config.dbfiles_path, dbfiles_path, sizeof(ctx->config.dbfiles_path) - 1);
     ctx->config.dbfiles_path[sizeof(ctx->config.dbfiles_path) - 1] = '\0';
