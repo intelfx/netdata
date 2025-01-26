@@ -4,6 +4,8 @@
 #define NETDATA_DBENGINE_COMPRESSION_H
 
 uint8_t dbengine_default_compression(void);
+int8_t dbengine_parse_compression(const char *arg);
+uint8_t dbengine_get_compression(void);
 
 bool dbengine_valid_compression_algorithm(uint8_t algorithm);
 
