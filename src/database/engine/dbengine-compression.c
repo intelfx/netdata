@@ -25,6 +25,30 @@ uint8_t dbengine_default_compression(void) {
     return RRDENG_COMPRESSION_NONE;
 }
 
+int8_t dbengine_parse_compression(const char *arg) {
+
+    if (arg == NULL || arg[0] == '\0') {
+        return -1;
+    } else if (!strcmp(arg, "zstd")) {
+        return RRDENG_COMPRESSION_ZSTD;
+    } else if (!strcmp(arg, "lz4")) {
+        return RRDENG_COMPRESSION_LZ4;
+    } else if (!strcmp(arg, "none")) {
+        return RRDENG_COMPRESSION_NONE;
+    } else {
+        nd_log(NDLS_DAEMON, NDLP_ERR, "DBENGINE: unknown compression algorithm \"%s\"", arg);
+        return -1;
+    }
+}
+
+uint8_t dbengine_get_compression(void) {
+    const char *arg = getenv("NETDATA_DBENGINE_COMPRESSION");
+    int8_t alg = dbengine_parse_compression(arg);
+    if (alg >= 0)
+        return alg;
+    return dbengine_default_compression();
+}
+
 bool dbengine_valid_compression_algorithm(uint8_t algorithm) {
     switch(algorithm) {
         case RRDENG_COMPRESSION_NONE:
