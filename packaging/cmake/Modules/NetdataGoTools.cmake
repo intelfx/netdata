@@ -4,11 +4,7 @@
 #
 # SPDX-License-Identifier: GPL
 
-if(CMAKE_BUILD_TYPE STREQUAL Debug)
-    set(GO_LDFLAGS "-X github.com/netdata/netdata/go/plugins/pkg/buildinfo.Version=${NETDATA_VERSION_STRING}")
-else()
-    set(GO_LDFLAGS "-w -s -X github.com/netdata/netdata/go/plugins/pkg/buildinfo.Version=${NETDATA_VERSION_STRING}")
-endif()
+set(GO_LDFLAGS "-X github.com/netdata/netdata/go/plugins/pkg/buildinfo.Version=${NETDATA_VERSION_STRING}")
 
 # add_go_target: Add a new target that needs to be built using the Go toolchain.
 #
@@ -33,7 +29,7 @@ macro(add_go_target target output build_src build_dir)
 
     add_custom_command(
         OUTPUT ${output}
-        COMMAND "${CMAKE_COMMAND}" -E env GOROOT=${GO_ROOT} CGO_ENABLED=0 GOPROXY=https://proxy.golang.org,direct "${GO_EXECUTABLE}" build -buildvcs=false -ldflags "${GO_LDFLAGS}" -o "${CMAKE_BINARY_DIR}/${output}" "./${build_dir}"
+        COMMAND "${CMAKE_COMMAND}" -E env "${GO_EXECUTABLE}" build -buildvcs=false -ldflags "${GO_LDFLAGS}" -o "${CMAKE_BINARY_DIR}/${output}" "./${build_dir}"
         DEPENDS ${${target}_DEPS}
         COMMENT "Building Go component ${output}"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${build_src}"
