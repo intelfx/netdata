@@ -93,6 +93,12 @@ else()
   option(USE_LTO "Attempt to use of LTO when building. Defaults to being enabled if supported for release builds." TRUE)
 endif()
 
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  option(ENABLE_UNWINDING "Enable extra compiler flags for better stack trace support" TRUE)
+else()
+  set(ENABLE_UNWINDING FALSE)
+endif()
+
 option(ENABLE_ADDRESS_SANITIZER "Build with address sanitizer enabled" False)
 mark_as_advanced(ENABLE_ADDRESS_SANITIZER)
 
@@ -146,6 +152,15 @@ if(NOT ${DISABLE_HARDENING})
   add_extra_compiler_flag("stack-clash-protection" "-fstack-clash-protection" HAVE_STACK_CLASH_PROTECTION)
   add_extra_compiler_flag("-fcf-protection" "-fcf-protection=full" HAVE_CFI)
   add_extra_compiler_flag("branch-protection" "-mbranch-protection=standard" HAVE_BRANCH_PROTECTION)
+endif()
+
+if(ENABLE_UNWINDING)
+    # -fno-omit-frame-pointer = add frame pointers to all functions
+    # -funwind-tables = generate unwind tables for all functions
+    # -fasynchronous-unwind-tables = the unwind table generated is precise at instruction boundary, instead of function boundary
+    add_compile_options(-fno-omit-frame-pointer -funwind-tables -fasynchronous-unwind-tables)
+    add_link_options(-rdynamic)
+    message(STATUS "Added compiler and linker flags for better stack trace support")
 endif()
 
 foreach(FLAG function-sections data-sections)
