@@ -40,7 +40,7 @@ endif()
 set(CMAKE_INSTALL_MESSAGE LAZY)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "netdata")
 
 option(USE_CXX_11 "Use C++11 instead of C++14 (should only be used on legacy systems that cannot support C++14, may disable some features)" False)
@@ -95,7 +95,7 @@ set(OS_MACOS       False)
 set(OS_WINDOWS     False)
 
 set(NETDATA_RUNTIME_PREFIX "${CMAKE_INSTALL_PREFIX}")
-set(BINDIR usr/sbin)
+set(BINDIR usr/bin)
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
         set(OS_MACOS True)
@@ -2626,7 +2626,7 @@ if(ENABLE_PLUGIN_DEBUGFS)
     # Install the debugfs.plugin binary
     install(TARGETS debugfs.plugin
             COMPONENT plugin-debugfs
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     install(FILES
             src/collectors/debugfs.plugin/libsensors/vendored/etc/sensors.conf.default
@@ -2677,7 +2677,7 @@ if(ENABLE_PLUGIN_APPS)
 
     install(TARGETS apps.plugin
             COMPONENT plugin-apps
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     install(FILES src/collectors/apps.plugin/apps_groups.conf
             COMPONENT plugin-apps
@@ -2707,7 +2707,7 @@ if(ENABLE_PLUGIN_FREEIPMI)
 
     install(TARGETS freeipmi.plugin
             COMPONENT plugin-freeipmi
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     if(BUILD_FOR_PACKAGING)
         install(FILES
@@ -2733,7 +2733,7 @@ if(ENABLE_PLUGIN_NFACCT)
 
     install(TARGETS nfacct.plugin
             COMPONENT plugin-nfacct
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     if(BUILD_FOR_PACKAGING)
         install(FILES
@@ -2756,7 +2756,7 @@ if(ENABLE_PLUGIN_XENSTAT)
 
     install(TARGETS xenstat.plugin
             COMPONENT plugin-xenstat
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     if(BUILD_FOR_PACKAGING)
         install(FILES
@@ -2774,7 +2774,7 @@ if(ENABLE_PLUGIN_PERF)
 
     install(TARGETS perf.plugin
             COMPONENT plugin-perf
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     if(BUILD_FOR_PACKAGING)
          install(FILES
@@ -2792,7 +2792,7 @@ if(ENABLE_PLUGIN_SLABINFO)
 
     install(TARGETS slabinfo.plugin
             COMPONENT plugin-slabinfo
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     if(BUILD_FOR_PACKAGING)
         install(FILES
@@ -2832,7 +2832,7 @@ if(ENABLE_PLUGIN_CUPS)
 
         install(TARGETS cups.plugin
                 COMPONENT plugin-cups
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 
         if(BUILD_FOR_PACKAGING)
                 install(FILES
@@ -2850,7 +2850,7 @@ if(NEED_NDSUDO)
 
     install(TARGETS ndsudo
             COMPONENT netdata
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 if(ENABLE_PLUGIN_CGROUP_NETWORK)
@@ -2861,7 +2861,7 @@ if(ENABLE_PLUGIN_CGROUP_NETWORK)
 
     install(TARGETS cgroup-network
             COMPONENT netdata
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 # Enable rust implementation if we don't have systemd and we want the journal plugin
@@ -2909,7 +2909,7 @@ if(ENABLE_PLUGIN_SYSTEMD_JOURNAL)
 
         install(TARGETS systemd-journal.plugin
                 COMPONENT plugin-systemd-journal
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 
         if(BUILD_FOR_PACKAGING)
                 install(FILES
@@ -2951,7 +2951,7 @@ if(OS_WINDOWS)
 
         install(TARGETS windows-events.plugin
                 COMPONENT plugin-windows-events
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 if(ENABLE_PLUGIN_EBPF)
@@ -3012,7 +3012,7 @@ if(ENABLE_PLUGIN_EBPF)
 
     install(TARGETS ebpf.plugin
             COMPONENT plugin-ebpf
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     install(FILES
             src/collectors/ebpf.plugin/ebpf.d.conf
@@ -3069,7 +3069,7 @@ if(ENABLE_PLUGIN_LOCAL_LISTENERS)
 
         install(TARGETS local-listeners
                 COMPONENT netdata
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 if(ENABLE_PLUGIN_NETWORK_VIEWER)
@@ -3089,7 +3089,7 @@ if(ENABLE_PLUGIN_NETWORK_VIEWER)
 
         install(TARGETS network-viewer.plugin
                 COMPONENT plugin-network-viewer
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 
         if(BUILD_FOR_PACKAGING)
                 install(FILES
@@ -3295,7 +3295,7 @@ if(ENABLE_PLUGIN_GO)
 
     install(PROGRAMS ${CMAKE_BINARY_DIR}/go.d.plugin
             COMPONENT plugin-go
-            DESTINATION usr/libexec/netdata/plugins.d)
+            DESTINATION usr/lib/netdata/plugins.d)
 
     # Build and install nd-mcp (stdio-golang bridge) exactly like go.d.plugin
     if (OS_WINDOWS)
@@ -3334,7 +3334,7 @@ set(CACHE_DIR "${NETDATA_RUNTIME_PREFIX}/var/cache/netdata")
 set(CONFIG_DIR "${NETDATA_RUNTIME_PREFIX}/etc/netdata")
 set(LIBCONFIG_DIR "${NETDATA_RUNTIME_PREFIX}/usr/lib/netdata/conf.d")
 set(LOG_DIR "${NETDATA_RUNTIME_PREFIX}/var/log/netdata")
-set(PLUGINS_DIR "${NETDATA_RUNTIME_PREFIX}/usr/libexec/netdata/plugins.d")
+set(PLUGINS_DIR "${NETDATA_RUNTIME_PREFIX}/usr/lib/netdata/plugins.d")
 set(VARLIB_DIR "${NETDATA_RUNTIME_PREFIX}/var/lib/netdata")
 
 # A non-default value is only used when building Debian packages (/var/lib/netdata/www)
@@ -3400,11 +3400,11 @@ install(DIRECTORY COMPONENT netdata DESTINATION etc/netdata/ssl)
 install(DIRECTORY COMPONENT netdata DESTINATION etc/netdata/statsd.d)
 install(DIRECTORY COMPONENT netdata DESTINATION usr/lib/netdata/conf.d)
 install(DIRECTORY COMPONENT netdata DESTINATION usr/lib/netdata/conf.d/schema.d)
-install(DIRECTORY COMPONENT netdata DESTINATION usr/libexec/netdata/plugins.d)
+install(DIRECTORY COMPONENT netdata DESTINATION usr/lib/netdata/plugins.d)
 install(DIRECTORY COMPONENT netdata DESTINATION ${WEB_DEST})
 
 set(libsysdir_POST "${NETDATA_RUNTIME_PREFIX}/usr/lib/netdata/system")
-set(pkglibexecdir_POST "${NETDATA_RUNTIME_PREFIX}/usr/libexec/netdata")
+set(pkglibexecdir_POST "${NETDATA_RUNTIME_PREFIX}/usr/lib/netdata")
 set(localstatedir_POST "${NETDATA_RUNTIME_PREFIX}/var")
 set(sbindir_POST "${NETDATA_RUNTIME_PREFIX}/${BINDIR}")
 set(configdir_POST "${NETDATA_RUNTIME_PREFIX}/etc/netdata")
@@ -3437,14 +3437,14 @@ configure_file(src/collectors/cgroups.plugin/cgroup-network-helper.sh.in
 install(PROGRAMS
         ${CMAKE_BINARY_DIR}/src/collectors/cgroups.plugin/cgroup-network-helper.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 configure_file(src/collectors/cgroups.plugin/cgroup-name.sh.in
                src/collectors/cgroups.plugin/cgroup-name.sh @ONLY)
 install(PROGRAMS
         ${CMAKE_BINARY_DIR}/src/collectors/cgroups.plugin/cgroup-name.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 #
 # statsd
@@ -3497,7 +3497,7 @@ configure_file(system/install-service.sh.in system/install-service.sh @ONLY)
 install(PROGRAMS
         ${CMAKE_BINARY_DIR}/system/install-service.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata)
+        DESTINATION usr/lib/netdata)
 
 configure_file(system/launchd/netdata.plist.in system/launchd/netdata.plist @ONLY)
 install(FILES
@@ -3635,7 +3635,7 @@ if(NOT OS_WINDOWS)
   install(PROGRAMS
           packaging/installer/netdata-updater.sh
           COMPONENT netdata
-          DESTINATION usr/libexec/netdata)
+          DESTINATION usr/lib/netdata)
 
   install(FILES
           system/netdata.conf
@@ -3683,18 +3683,18 @@ configure_file(src/daemon/anonymous-statistics.sh.in src/daemon/anonymous-statis
 install(PROGRAMS
         ${CMAKE_BINARY_DIR}/src/daemon/anonymous-statistics.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 configure_file(src/daemon/get-kubernetes-labels.sh.in src/daemon/get-kubernetes-labels.sh @ONLY)
 install(PROGRAMS
         ${CMAKE_BINARY_DIR}/src/daemon/get-kubernetes-labels.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 install(PROGRAMS
         src/daemon/system-info.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 #
 # health files
@@ -3710,14 +3710,14 @@ configure_file(src/health/notifications/alarm-notify.sh.in src/health/notificati
 install(PROGRAMS
         ${CMAKE_BINARY_DIR}/src/health/notifications/alarm-notify.sh
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         install(PROGRAMS
                 src/health/notifications/alarm-email.sh
                 src/health/notifications/alarm-test.sh
                 COMPONENT netdata
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 install(FILES
@@ -3744,7 +3744,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 ${CMAKE_BINARY_DIR}/tests/alarm_repetition/alarm.sh
                 ${CMAKE_BINARY_DIR}/tests/template_dimension/template_dim.sh
                 ${CMAKE_BINARY_DIR}/tests/ebpf/ebpf_thread_function.sh
-                DESTINATION usr/libexec/netdata/plugins.d)
+                DESTINATION usr/lib/netdata/plugins.d)
 endif()
 #
 # charts.d plugin
@@ -3757,12 +3757,12 @@ if(ENABLE_PLUGIN_CHARTS)
   install(PROGRAMS
           ${CMAKE_BINARY_DIR}/src/collectors/charts.d.plugin/charts.d.plugin
           COMPONENT plugin-chartsd
-          DESTINATION usr/libexec/netdata/plugins.d)
+          DESTINATION usr/lib/netdata/plugins.d)
 
   install(PROGRAMS
           src/collectors/charts.d.plugin/charts.d.dryrun-helper.sh
           COMPONENT plugin-chartsd
-          DESTINATION usr/libexec/netdata/plugins.d)
+          DESTINATION usr/lib/netdata/plugins.d)
 
   install(FILES
           src/collectors/charts.d.plugin/charts.d.conf
@@ -3774,7 +3774,7 @@ if(ENABLE_PLUGIN_CHARTS)
           src/collectors/charts.d.plugin/libreswan/libreswan.chart.sh
           src/collectors/charts.d.plugin/opensips/opensips.chart.sh
           COMPONENT plugin-chartsd
-          DESTINATION usr/libexec/netdata/charts.d)
+          DESTINATION usr/lib/netdata/charts.d)
 
   install(FILES
           src/collectors/charts.d.plugin/example/example.conf
@@ -3796,7 +3796,7 @@ if(OS_LINUX OR ENABLE_PLUGIN_CHARTS)
   install(FILES
           src/collectors/charts.d.plugin/loopsleepms.sh.inc
           COMPONENT netdata
-          DESTINATION usr/libexec/netdata/plugins.d)
+          DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 #
@@ -3808,7 +3808,7 @@ if(OS_LINUX)
   install(PROGRAMS
           ${CMAKE_BINARY_DIR}/src/collectors/tc.plugin/tc-qos-helper.sh
           COMPONENT netdata
-          DESTINATION usr/libexec/netdata/plugins.d)
+          DESTINATION usr/lib/netdata/plugins.d)
 endif()
 
 # confs
@@ -3828,15 +3828,15 @@ if(ENABLE_PLUGIN_PYTHON)
   configure_file(src/collectors/python.d.plugin/python.d.plugin.in src/collectors/python.d.plugin/python.d.plugin @ONLY)
   install(PROGRAMS ${CMAKE_BINARY_DIR}/src/collectors/python.d.plugin/python.d.plugin
           COMPONENT plugin-pythond
-          DESTINATION usr/libexec/netdata/plugins.d)
+          DESTINATION usr/lib/netdata/plugins.d)
 
   install(DIRECTORY src/collectors/python.d.plugin/python_modules
           COMPONENT plugin-pythond
-          DESTINATION usr/libexec/netdata/python.d)
+          DESTINATION usr/lib/netdata/python.d)
 
   if(OS_WINDOWS)
     include(NetdataUtil)
-    precompile_python(usr/libexec/netdata/python.d plugin-pythond)
+    precompile_python(usr/lib/netdata/python.d plugin-pythond)
   endif()
 
   install(FILES src/collectors/python.d.plugin/python.d.conf
@@ -3863,7 +3863,7 @@ if(ENABLE_PLUGIN_PYTHON)
           src/collectors/python.d.plugin/liquidctl/liquidctl.chart.py
           src/collectors/python.d.plugin/traefik/traefik.chart.py
           COMPONENT plugin-pythond
-          DESTINATION usr/libexec/netdata/python.d)
+          DESTINATION usr/lib/netdata/python.d)
 
   if(BUILD_FOR_PACKAGING)
     install(FILES
@@ -3880,7 +3880,7 @@ endif()
 configure_file(src/collectors/ioping.plugin/ioping.plugin.in src/collectors/ioping.plugin/ioping.plugin @ONLY)
 install(PROGRAMS ${CMAKE_BINARY_DIR}/src/collectors/ioping.plugin/ioping.plugin
         COMPONENT netdata
-        DESTINATION usr/libexec/netdata/plugins.d)
+        DESTINATION usr/lib/netdata/plugins.d)
 
 #
 # go.d.plugin
