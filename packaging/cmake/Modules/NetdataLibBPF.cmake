@@ -70,11 +70,11 @@ function(netdata_bundle_libbpf)
         GIT_REPOSITORY https://github.com/netdata/libbpf.git
         GIT_TAG ${_libbpf_tag}
         SOURCE_DIR "${libbpf_SOURCE_DIR}"
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ${MAKE_COMMAND} -C src CC=${CMAKE_C_COMPILER} BUILD_STATIC_ONLY=1 OBJDIR=build/ DESTDIR=../ install
+        CONFIGURE_COMMAND mkdir -pv src/build/
+        BUILD_COMMAND ${MAKE_COMMAND} -C src CC=${CMAKE_C_COMPILER} BUILD_STATIC_ONLY=1 OBJDIR=build/ all
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS "${_libbpf_library}"
-        INSTALL_COMMAND ""
+        INSTALL_COMMAND ${MAKE_COMMAND} -C src CC=${CMAKE_C_COMPILER} BUILD_STATIC_ONLY=1 OBJDIR=build/ DESTDIR=../ install
         EXCLUDE_FROM_ALL 1
     )
 
