@@ -4691,6 +4691,7 @@ if(ENABLE_PLUGIN_PYTHON)
           src/collectors/python.d.plugin/liquidctl/liquidctl.conf
           src/collectors/python.d.plugin/traefik/traefik.conf
           src/collectors/python.d.plugin/turbostat/turbostat.conf
+          src/collectors/python.d.plugin/zfsiostat/zfsiostat.conf
           COMPONENT plugin-pythond
           DESTINATION usr/lib/netdata/conf.d/python.d)
 
@@ -4702,6 +4703,7 @@ if(ENABLE_PLUGIN_PYTHON)
           src/collectors/python.d.plugin/liquidctl/liquidctl.chart.py
           src/collectors/python.d.plugin/traefik/traefik.chart.py
           src/collectors/python.d.plugin/turbostat/turbostat.chart.py
+          src/collectors/python.d.plugin/zfsiostat/zfsiostat.chart.py
           COMPONENT plugin-pythond
           DESTINATION usr/libexec/netdata/python.d)
 
