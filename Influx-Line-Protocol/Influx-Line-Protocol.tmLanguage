@@ -1,0 +1,128 @@
+{
+  "name": "Influx Line Protocol (Generic Metrics)",
+  "scopeName": "source.influxlp",
+  "fileTypes": [
+    "influx"
+  ],
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#data-line"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.influxlp",
+      "match": "^[\\t ]*#.*$"
+    },
+
+    "data-line": {
+      "name": "meta.line.influxlp",
+      "begin": "^(?=\\S)",
+      "end": "$",
+      "patterns": [
+        { "include": "#measurement" },
+        { "include": "#tags" },
+        { "include": "#fields-and-timestamp" }
+      ]
+    },
+
+    "measurement": {
+      "name": "entity.name.type.measurement.influxlp",
+      "match": "^(?:\\\\.|[^ ,])+"
+    },
+
+    "tags": {
+      "name": "meta.tags.influxlp",
+      "patterns": [
+        {
+          "name": "meta.tag.influxlp",
+          "match": ",((?:\\\\.|[^ =,])+)=((?:\\\\.|[^ ,])+)",
+          "captures": {
+            "1": { "name": "variable.parameter.tag.key.influxlp" },
+            "2": { "name": "string.unquoted.tag.value.influxlp" }
+          }
+        }
+      ]
+    },
+
+    "fields-and-timestamp": {
+      "name": "meta.fields-and-timestamp.influxlp",
+      "begin": "\\s+",
+      "end": "$",
+      "patterns": [
+        {
+          "include": "#timestamp-trailer"
+        },
+        {
+          "include": "#field-pair"
+        },
+        {
+          "include": "#field-delimiter"
+        }
+      ]
+    },
+
+    "field-delimiter": {
+      "name": "punctuation.separator.comma.influxlp",
+      "match": "(?<=\\S),(?=\\S)"
+    },
+
+    "field-pair": {
+      "name": "meta.field.influxlp",
+      "match": "(?:^|(?<=\\s|,))((?:\\\\.|[^ =,])+)=([^,\\s]+)",
+      "captures": {
+        "1": { "name": "variable.other.field.key.influxlp" },
+        "2": { "patterns": [
+          { "include": "#string" },
+          { "include": "#number" },
+          { "include": "#boolean" },
+          { "include": "#nan-inf" }
+        ]}
+      }
+    },
+
+    "timestamp-trailer": {
+      "name": "constant.numeric.timestamp.influxlp",
+      "match": "\\s+[-+]?\\d{9,}\\s*$"
+    },
+
+    "string": {
+      "name": "string.quoted.double.influxlp",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.influxlp", "match": "\\\\." }
+      ]
+    },
+
+    "number": {
+      "patterns": [
+        {
+          "name": "constant.numeric.integer.signed.influxlp",
+          "match": "[-+]?\\d+[iI]"
+        },
+        {
+          "name": "constant.numeric.integer.unsigned.influxlp",
+          "match": "[-+]?\\d+[uU]"
+        },
+        {
+          "name": "constant.numeric.float.influxlp",
+          "match": "[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?"
+        }
+      ]
+    },
+
+    "boolean": {
+      "name": "constant.language.boolean.influxlp",
+      "match": "(?i:\\b(?:true|false|t|f)\\b)"
+    },
+
+    "nan-inf": {
+      "name": "constant.language.special-number.influxlp",
+      "match": "(?i:\\b(?:nan|\\+?inf|-inf)\\b)"
+    }
+  }
+}
