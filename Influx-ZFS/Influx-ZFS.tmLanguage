@@ -1,0 +1,105 @@
+{
+  "name": "Influx Line Protocol (ZFS)",
+  "scopeName": "source.influx.zpool",
+  "fileTypes": [
+    "influx"
+  ],
+  "patterns": [
+    {
+      "name": "meta.influx.line",
+      "begin": "^(?=\\S)",
+      "end": "$",
+      "patterns": [
+        {
+          "name": "meta.influx.measurement",
+          "match": "^(?:([A-Za-z_][A-Za-z0-9_\\-]*)).*(?=\\s)",
+          "captures": {
+            "1": {
+              "name": "entity.name.section.influx.measurement"
+            }
+          }
+        },
+        {
+          "comment": "Highlight known zpool measurement names more prominently",
+          "match": "^(zpool_(?:stats|latency|io_size|vdev_stats|vdev_queue|scan_stats))",
+          "name": "entity.name.type.influx.measurement.special"
+        },
+        {
+          "comment": "Tags: after measurement, before the first space. Comma-separated key=value.",
+          "begin": "^[^\\s,]+(,)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.separator.sequence.influx" }
+          },
+          "end": "\\s",
+          "patterns": [
+            {
+              "comment": "Single tag key=value, separated by commas",
+              "match": "(?x)\n  (?<=^|,)            # after start or comma\n  ([A-Za-z_][A-Za-z0-9_\\-]*) # key\n  (=)                 # equals\n  ([^,\\s]+)          # value (no spaces/commas)\n",
+              "captures": {
+                "1": { "name": "variable.parameter.influx.tag-key" },
+                "2": { "name": "keyword.operator.assignment.influx" },
+                "3": { "name": "string.unquoted.influx.tag-value" }
+              }
+            },
+            {
+              "comment": "Known tag keys highlighted specially",
+              "match": "(?<=^|,)(name|state|path|vdev|le)(?==)",
+              "name": "support.constant.influx.tag-key.known"
+            },
+            {
+              "match": ",",
+              "name": "punctuation.separator.sequence.influx"
+            }
+          ]
+        },
+        {
+          "comment": "Fields: after first space, before final timestamp. Comma-separated key=value.",
+          "begin": "(?<=\\s)(?=[^\\s]+\\s?\\d*$)",
+          "end": "(?=\\s\\d+$|$)",
+          "patterns": [
+            {
+              "comment": "Field key=value",
+              "match": "(?x)\n  (?<=^|\\s|,)            # start/space/comma\n  ([A-Za-z_][A-Za-z0-9_\\-]*) # key\n  (=)                     # equals\n  (                       # value\n    (?:\\+|\\-)?\\d+(?:\\.\\d+)?[u]? # int/float, optional 'u'\n    | [^,\\s]+                 # or generic token\n  )\n",
+              "captures": {
+                "1": { "name": "variable.other.member.influx.field-key" },
+                "2": { "name": "keyword.operator.assignment.influx" },
+                "3": { "name": "constant.other.influx.field-value" }
+              }
+            },
+            {
+              "comment": "Numeric with unsigned suffix 'u'",
+              "match": "(?<=\\=)(?:\\+|\\-)?\\d+(?:\\.\\d+)?u\\b",
+              "name": "constant.numeric.integer.influx.unsigned"
+            },
+            {
+              "comment": "Integer or float without suffix",
+              "match": "(?<=\\=)(?:\\+|\\-)?\\d+(?:\\.\\d+)?\\b",
+              "name": "constant.numeric.influx"
+            },
+            {
+              "match": ",",
+              "name": "punctuation.separator.sequence.influx"
+            }
+          ]
+        },
+        {
+          "comment": "Timestamp: final space + 10+ digits till EOL",
+          "match": "\\s(\\d{10,})$",
+          "captures": {
+            "1": {
+              "name": "constant.numeric.timestamp.influx"
+            }
+          }
+        },
+        {
+          "comment": "Whitespace fallback",
+          "match": "\\s+",
+          "name": "text.whitespace.influx"
+        }
+      ]
+    }
+  ],
+  "repository": {},
+  "injections": {},
+  "uuid": "6b3d86a9-63e4-4b8b-a8e7-6b2d08f1f4b1"
+}
