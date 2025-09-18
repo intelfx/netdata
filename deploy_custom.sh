@@ -17,12 +17,19 @@ fi
 
 declare -A FILES
 FILES=(
-  [src/collectors/python.d.plugin/turbostat/turbostat.chart.py]=PREFIX/python.d
-  [src/collectors/python.d.plugin/turbostat/turbostat.conf]=PREFIX/conf.d/python.d
-  [src/collectors/python.d.plugin/zfsiostat/zfsiostat.chart.py]=PREFIX/python.d
-  [src/collectors/python.d.plugin/zfsiostat/zfsiostat.conf]=PREFIX/conf.d/python.d
   [src/collectors/python.d.plugin/python_modules]=PREFIX/python.d
-  [src/collectors/python.d.plugin/python.d.conf]=PREFIX/conf.d
+
+  # [src/collectors/python.d.plugin/python.d.conf]=PREFIX/conf.d
+  # [src/collectors/python.d.plugin/turbostat/turbostat.chart.py]=PREFIX/python.d
+  # [src/collectors/python.d.plugin/zfsiostat/zfsiostat.chart.py]=PREFIX/python.d
+  # [src/collectors/python.d.plugin/turbostat/turbostat.conf]=PREFIX/conf.d/python.d
+  # [src/collectors/python.d.plugin/zfsiostat/zfsiostat.conf]=PREFIX/conf.d/python.d
+
+  [src/collectors/python.d.plugin/python.d.conf]=/etc/netdata
+  [src/collectors/python.d.plugin/turbostat/turbostat.chart.py]=/etc/netdata/custom-plugins.d/python.d/
+  [src/collectors/python.d.plugin/zfsiostat/zfsiostat.chart.py]=/etc/netdata/custom-plugins.d/python.d/
+  [src/collectors/python.d.plugin/turbostat/turbostat.conf]=/etc/netdata/python.d/
+  [src/collectors/python.d.plugin/zfsiostat/zfsiostat.conf]=/etc/netdata/python.d/
 )
 
 ssh_control=(-o ControlPath="deploy-$$")
