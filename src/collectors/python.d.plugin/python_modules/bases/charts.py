@@ -175,7 +175,7 @@ class Chart:
         self.name = '{type}.{id}'.format(type=self.params['type'],
                                          id=self.params['id'])
         if self.params.get('chart_type') not in CHART_TYPES:
-            self.params['chart_type'] = 'absolute'
+            self.params['chart_type'] = 'line'
         hidden = str(self.params.get('hidden', ''))
         self.params['hidden'] = 'hidden' if hidden == 'hidden' else ''
 
