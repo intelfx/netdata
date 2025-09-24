@@ -236,12 +236,10 @@ class Device(dblc.Device):
         return f'({self.pool} misc)'
 
     def make_chart_id_prefix(self) -> str:
+        _WANT_ESCAPING = False
         # drop leading "root" unless that's the entire name (i.e., root vdev)
-        vdev_escaped = re.sub(r'[^a-zA-Z0-9_-]', '_', self.vdev.removeprefix("root/"))
-        return f'{self.pool}/{vdev_escaped}'
-
-    def make_chart_id_title_suffix(self) -> Optional[str]:
-        return f'({self.pool}/{self.vdev.removeprefix("root/")})'
+        vdev_id = f'{self.pool}/{self.vdev.removeprefix("root/")}'
+        return re.sub(r'[^a-zA-Z0-9_-]', '_', vdev_id) if _WANT_ESCAPING else vdev_id
 
     def make_chart_labels(self) -> dict[str, str]:
         labels = {
