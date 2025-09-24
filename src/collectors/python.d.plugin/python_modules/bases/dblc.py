@@ -218,14 +218,16 @@ class ChartInstance:
     title: Optional[str] = None
     family: Optional[str] = None
     labels: Optional[dict[str, str]] = None
+    """NOTE: labels must not be modified (this structure is used as a key)"""
 
     def __hash__(self):
+        # Python does not have frozendict; sunrise by hand
         return hash((
             self.id,
             self.context,
             self.title,
             self.family,
-            frozenset(self.labels.items()) if self.labels is not None else None,
+            tuple(self.labels.items()) if self.labels is not None else None,
         ))
 
 
