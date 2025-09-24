@@ -473,9 +473,13 @@ class Service(dblc.Service):
                     else:
                         return f"{int(seconds * 1e9)}ns"
 
-                bucket_sec = float(bucket)
-                bucket_id = f"{int(bucket_sec * 1e9)}ns" if bucket_sec != float("+inf") else "infinity"
-                bucket_label = format_duration(bucket_sec)
+                # XXX: unfortunately, netdata uses dimension _labels_ (not IDs) when exporting
+                #      metrics to Prometheus. This means we cannot pretty-print durations
+                #      (e.g., "1 us" or "100 ms" instead of "0.000001" and "0.1") for dimension
+                #      labels, because Grafana requires dimension labels to be raw numeric values
+                #      when using them as Y-axis on heatmaps.
+                bucket_id = f"{int(float(bucket) * 1e9)}" if bucket != '+Inf' else 'inf'
+                bucket_label = bucket
 
                 proto = CHART_PROTO_FROM_NAME['io_latency']
                 for key, value in point.dimensions.items():
@@ -516,19 +520,16 @@ class Service(dblc.Service):
                 def format_bytes(bytes_: float) -> str:
                     if bytes_ == float("+inf"):
                         return "infinity"
-
                     units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB']
-
                     for u in units:
                         if bytes_ < 1024:
                             break
                         bytes_ /= 1024
-
                     return f"{int(bytes_)}{u}"
 
-                bucket_bytes = float(bucket)
-                bucket_id = f"{int(bucket_bytes)}B" if bucket_bytes != float("+inf") else "infinity"
-                bucket_label = format_bytes(bucket_bytes)
+                # XXX: see above for an explanation why we are not pretty-printing dimension labels
+                bucket_id = f"{int(bucket)}" if bucket != '+Inf' else 'inf'
+                bucket_label = bucket
 
                 proto = CHART_PROTO_FROM_NAME['io_size']
                 for key, value in point.dimensions.items():
