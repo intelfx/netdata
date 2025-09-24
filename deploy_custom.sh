@@ -33,7 +33,7 @@ FILES=(
 )
 
 ssh_control=(-o ControlPath="deploy-$$")
-ssh_control_master=(-o ControlMaster=yes -o ControlPersist=1 "${ssh_control[@]}")
+ssh_control_master=(-o ControlMaster=yes -o ControlPersist=10 "${ssh_control[@]}")
 ssh_control_slave=(-o ControlMaster=no "${ssh_control[@]}")
 
 set -x
