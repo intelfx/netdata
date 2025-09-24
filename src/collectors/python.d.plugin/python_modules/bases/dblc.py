@@ -316,15 +316,13 @@ class ChartBuilder:
             # 'type': job_name(), added in Service.charts.add_chart()
             'id': chart.make_chart_id(),
             # 'name': f'{type}.{id}', overridden in Chart.__init__()
-            'title': chart.make_chart_title(),
             'units': chart.proto.unit_name,
             'chart_type': 'line',
             'hidden': '',
-        }
-        chart_options.update({
-            'family': chart.make_chart_family(),
+            'title': chart.make_chart_title(),
             'context': f'{self.service.plugin_context}.{chart.make_chart_context()}',
-        })
+            'family': chart.make_chart_family(),
+        }
 
         chart_options_overrides = {
             # normally job_name(), override this
