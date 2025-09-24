@@ -1,4 +1,5 @@
 import dataclasses
+import os.path
 import re
 import shlex
 import subprocess
@@ -256,7 +257,10 @@ class Device(dblc.Device):
 
 
 class Service(dblc.Service):
-    COMMAND = ['/usr/lib/zfs/zpool_influxdb']
+    BINARIES = [
+        '/usr/lib/zfs/zpool_influxdb',
+        '/usr/lib/zfs-linux/zpool_influxdb',
+    ]
     SUDO = 'sudo'
 
     def __init__(self, configuration=None, name=None):
@@ -265,10 +269,12 @@ class Service(dblc.Service):
             name=name,
             plugin_id=PLUGIN_ID,
         )
+        command = configuration.get('command')
+        if command is None:
+            command = next(b for b in self.BINARIES if os.path.exists(b))
+        self.command = self._parse_cmd(command)
+
         self.use_sudo = configuration.get('use_sudo', True)
-        self.command = Service._parse_cmd(
-            configuration.get('command', Service.COMMAND)
-        )
         self.sudo = Service._parse_cmd(
             configuration.get('sudo', Service.SUDO)
         ) if self.use_sudo else None
