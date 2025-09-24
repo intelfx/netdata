@@ -472,7 +472,10 @@ class Device(dblc.Device):
 
 
 class Service(dblc.Service):
-    COMMAND = ['/usr/bin/turbostat']
+    BINARIES = [
+        '/usr/bin/turbostat',
+        '/usr/sbin/turbostat',
+    ]
     SUDO = 'sudo'
 
     use_sudo: bool
@@ -486,10 +489,12 @@ class Service(dblc.Service):
             name=name,
             plugin_id=PLUGIN_ID,
         )
+        command = configuration.get('command')
+        if command is None:
+            command = next(b for b in self.BINARIES if os.path.exists(b))
+        self.command = self._parse_cmd(command)
+
         self.use_sudo = configuration.get('use_sudo', True)
-        self.command = Service._parse_cmd(
-            configuration.get('turbostat', Service.COMMAND)
-        )
         self.sudo = Service._parse_cmd(
             configuration.get('sudo', Service.SUDO)
         ) if self.use_sudo else None
