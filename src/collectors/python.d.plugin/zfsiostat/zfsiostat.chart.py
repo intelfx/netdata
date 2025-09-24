@@ -209,22 +209,32 @@ class Device(dblc.Device):
     is_toplevel: bool = False  # whether the vdev is a "top-level" vdev
 
     def make_chart_family_suffix(self) -> str:
+        # XXX: Netdata documentation states that chart family can be used separately from
+        #      the chart context to separate charts for different "entities" (devices, etc.)
+        #      (while the chart context is supposed to contain the metric type itself),
+        #      it does not seem to work that way. Charts with different families, but same context
+        #      are combined, and their sidebar sections are also merged together with mangled names.
         if self.is_leaf:
-            return f'(leaf)'
+            return f'({self.pool} leaf)'
         elif self.is_toplevel:
-            return f'(top-level)'
+            return f'({self.pool} top-level)'
         elif self.is_root:
-            return f'(root)'
-        return None
+            return f'({self.pool} root)'
+        return f'({self.pool} misc)'
 
     def make_chart_context_prefix(self) -> str:
-        if self.is_leaf:
-            return self.pool + '_leaf'
-        elif self.is_toplevel:
-            return self.pool + '_toplevel'
-        elif self.is_root:
-            return self.pool + '_root'
-        return self.pool
+        # XXX: chart context ends up as part of the Prometheus time series name.
+        #      While we would prefer to keep the vdev "kind" as part of the chart context
+        #      because it works better with Netdata UI, this is less convenient for the type
+        #      of aggregations we'd like to do in Prometheus.
+        # if self.is_leaf:
+        #     return 'leaf'
+        # elif self.is_toplevel:
+        #     return 'toplevel'
+        # elif self.is_root:
+        #     return 'root'
+        # return 'misc'
+        return None
 
     def make_chart_title_suffix(self) -> str:
         if self.is_leaf:
