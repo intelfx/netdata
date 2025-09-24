@@ -320,7 +320,7 @@ class ChartBuilder:
             'chart_type': 'line',
             'hidden': '',
             'title': chart.make_chart_title(),
-            'context': f'{self.service.plugin_context}.{chart.make_chart_context()}',
+            'context': f'{self.service.plugin_id}.{chart.make_chart_context()}',
             'family': chart.make_chart_family(),
         }
 
@@ -399,20 +399,16 @@ class ChartBuilder:
 
 class Service(SimpleService):
     priority: int
-    # This is prepended to all chart and dimension IDs.
-    # The trailing number is used as a disambiguator during development. Increment when schema changes
-    # to force netdata to create new charts. Otherwise, chart definitions will get reused.
+    # This is prepended to all chart and dimension IDs and chart contexts.
+    # Append a trailing number here to use as a disambiguator during development.
+    # Increment when chart definitions / structure changes to force netdata to create new charts.
+    # Otherwise, the UI will show a combination of old and new charts.
     plugin_id: str
-    # This is prepended to all chart contexts.
-    # This _somehow_ influences the choice and naming of the sidebar section in the UI.
-    plugin_context: str
 
-    def __init__(self, configuration, name, plugin_id: str, plugin_context: str):
+    def __init__(self, configuration, name, plugin_id: str):
         SimpleService.__init__(self, configuration=configuration, name=name)
         self.priority = self.charts.priority  # remember initial priority as we assign it ourselves
-
         self.plugin_id = plugin_id
-        self.plugin_context = plugin_context
 
 
     def make_chart_priority(self, chart: Chart) -> int:
