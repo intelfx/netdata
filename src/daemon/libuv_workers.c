@@ -264,7 +264,7 @@ void pop_thread(void *arg) {
             }
             i++;
         } else {
-            uv_sleep(1);  // avoid busy spin
+            usleep(1000);  // avoid busy spin
         }
     }
     fprintf(stderr, "POPPED: %d commands\n", args->total);
