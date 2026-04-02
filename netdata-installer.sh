@@ -784,6 +784,89 @@ install_netdata_dirs
 
 # --- plugins ----
 
+# =========================================================================
+# Plugin privilege management
+#
+# Privileged plugins need special ownership and either Linux capabilities
+# or setuid-root to function.  The table below is the single source of
+# truth; it drives the live installer, the DESTDIR installer, and the
+# post-install help text.
+#
+# foreach_privileged_plugin <callback>
+#   Calls:  callback <filename> <mode> [<capabilities>]
+#
+#   Modes:
+#     caps-verify <caps>  Try setcap, verify execution with -t, setuid fallback.
+#     caps <caps>         Try setcap (no verify), setuid fallback.
+#     setuid              Always chmod 4750 (setuid root).
+#     restricted          Just chmod 0750 (group-executable, no escalation).
+#
+#   <caps> may contain "||"-separated alternatives that are tried left to
+#   right (e.g. "cap_perfmon+ep||cap_sys_admin+ep").
+# =========================================================================
+
+foreach_privileged_plugin() {
+  _fp_cb="${1}"
+  #                filename                      mode         capabilities
+  "${_fp_cb}" apps.plugin                        caps-verify  "cap_dac_read_search,cap_sys_ptrace+ep"
+  "${_fp_cb}" debugfs.plugin                     caps-verify  "cap_dac_read_search+ep"
+  "${_fp_cb}" systemd-journal.plugin             caps         "cap_dac_read_search+ep"
+  "${_fp_cb}" otel-signal-viewer-plugin          caps         "cap_dac_read_search+ep"
+  "${_fp_cb}" perf.plugin                        caps         "cap_perfmon+ep" "cap_sys_admin+ep"
+  "${_fp_cb}" slabinfo.plugin                    caps         "cap_dac_read_search+ep"
+  "${_fp_cb}" go.d.plugin                        caps         "cap_dac_read_search+epi cap_net_admin+epi cap_net_raw=eip"
+  "${_fp_cb}" freeipmi.plugin                    setuid
+  "${_fp_cb}" nfacct.plugin                      setuid
+  "${_fp_cb}" xenstat.plugin                     setuid
+  "${_fp_cb}" ioping.plugin                      setuid
+  "${_fp_cb}" ebpf.plugin                        setuid
+  "${_fp_cb}" cgroup-network                     setuid
+  "${_fp_cb}" local-listeners                    setuid
+  "${_fp_cb}" network-viewer.plugin              setuid
+  "${_fp_cb}" ndsudo                             setuid
+  "${_fp_cb}" otel-plugin                        restricted
+  "${_fp_cb}" cgroup-network-helper.sh           restricted
+}
+
+# set_plugin_privileges <filename> <mode> [<capabilities>]
+#
+# Set ownership (root:NETDATA_GROUP) and the appropriate privilege
+# escalation mechanism on a single plugin executable.
+# shellcheck disable=SC2329
+set_plugin_privileges() {
+  _spp_name="${1}"
+  _spp_mode="${2}"
+  shift 2
+  _spp_path="${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/${_spp_name}"
+
+  [ ! -f "${_spp_path}" ] && return 0
+
+  run chown "root:${NETDATA_GROUP}" "${_spp_path}"
+
+  case "${_spp_mode}" in
+    caps|caps-verify)
+      if ! iscontainer && command -v setcap 1>/dev/null 2>&1; then
+        run chmod 0750 "${_spp_path}"
+        for _spp_cap; do
+          if run setcap "${_spp_cap}" "${_spp_path}"; then
+            if [ "${_spp_mode}" = "caps-verify" ]; then
+              "${_spp_path}" -t >/dev/null 2>&1 || continue
+            fi
+            return
+          fi
+        done
+      fi
+      run chmod 4750 "${_spp_path}"
+      ;;
+    setuid)
+      run chmod 4750 "${_spp_path}"
+      ;;
+    restricted)
+      run chmod 0750 "${_spp_path}"
+      ;;
+  esac
+}
+
 if [ "$(id -u)" -eq 0 ]; then
   # find the admin group
   admin_group=
@@ -791,6 +874,7 @@ if [ "$(id -u)" -eq 0 ]; then
   test -z "${admin_group}" && get_group daemon > /dev/null 2>&1 && admin_group="daemon"
   test -z "${admin_group}" && admin_group="${NETDATA_GROUP}"
 
+  # Base ownership and modes for the whole libexec tree
   run chown "${NETDATA_USER}:${admin_group}" "${NETDATA_LOG_DIR}"
   run chown -R "root:${admin_group}" "${NETDATA_PREFIX}/usr/libexec/netdata"
   run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type d -exec chmod 0755 {} \;
@@ -800,172 +884,8 @@ if [ "$(id -u)" -eq 0 ]; then
   run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type f -a -name \*plugin -exec chmod 0750 {} \;
   run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type f -a -name \*.sh -exec chmod 0755 {} \;
 
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1> /dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin"
-      if run setcap cap_dac_read_search,cap_sys_ptrace+ep "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin"; then
-        # if we managed to setcap, but we fail to execute apps.plugin setuid to root
-        "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin" -t > /dev/null 2>&1 && capabilities=1 || capabilities=0
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      # fix apps.plugin to be setuid to root
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/debugfs.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/debugfs.plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1> /dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/debugfs.plugin"
-      if run setcap cap_dac_read_search+ep "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/debugfs.plugin"; then
-        # if we managed to setcap, but we fail to execute debugfs.plugin setuid to root
-        "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/debugfs.plugin" -t > /dev/null 2>&1 && capabilities=1 || capabilities=0
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      # fix debugfs.plugin to be setuid to root
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/debugfs.plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/systemd-journal.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/systemd-journal.plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1> /dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/systemd-journal.plugin"
-      if run setcap cap_dac_read_search+ep "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/systemd-journal.plugin"; then
-        capabilities=1
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/systemd-journal.plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-signal-viewer-plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-signal-viewer-plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1> /dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-signal-viewer-plugin"
-      if run setcap cap_dac_read_search+ep "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-signal-viewer-plugin"; then
-        capabilities=1
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-signal-viewer-plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/perf.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/perf.plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1>/dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/perf.plugin"
-      if run sh -c "setcap cap_perfmon+ep \"${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/perf.plugin\" || setcap cap_sys_admin+ep \"${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/perf.plugin\""; then
-        capabilities=1
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/perf.plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/slabinfo.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/slabinfo.plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1>/dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/slabinfo.plugin"
-      if run setcap cap_dac_read_search+ep "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/slabinfo.plugin"; then
-        capabilities=1
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/slabinfo.plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/freeipmi.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/freeipmi.plugin"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/freeipmi.plugin"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/nfacct.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/nfacct.plugin"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/nfacct.plugin"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/xenstat.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/xenstat.plugin"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/xenstat.plugin"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ioping" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ioping"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ioping"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ebpf.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ebpf.plugin"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ebpf.plugin"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/cgroup-network" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/cgroup-network"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/cgroup-network"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/cgroup-network-helper.sh" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/cgroup-network-helper.sh"
-    run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/cgroup-network-helper.sh"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/local-listeners" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/local-listeners"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/local-listeners"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/network-viewer.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/network-viewer.plugin"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/network-viewer.plugin"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ndsudo" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ndsudo"
-    run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/ndsudo"
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/go.d.plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/go.d.plugin"
-    capabilities=0
-    if ! iscontainer && command -v setcap 1> /dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/go.d.plugin"
-      if run setcap "cap_dac_read_search+epi cap_net_admin+epi cap_net_raw=eip" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/go.d.plugin"; then
-        capabilities=1
-      fi
-    fi
-
-    if [ $capabilities -eq 0 ]; then
-      # fix go.d.plugin to be setuid to root
-      run chmod 4750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/go.d.plugin"
-    fi
-  fi
-
-  if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-plugin" ]; then
-    run chown "root:${NETDATA_GROUP}" "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-plugin"
-    if ! iscontainer && command -v setcap 1>/dev/null 2>&1; then
-      run chmod 0750 "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/otel-plugin"
-    fi
-  fi
+  # Per-plugin privilege escalation (capabilities with setuid fallback)
+  foreach_privileged_plugin set_plugin_privileges
 
 else
   # non-privileged user installation
