@@ -145,7 +145,7 @@ REINSTALL_OPTIONS="$(
   printf "\n"
 )"
 # remove options that shown not be inherited by netdata-updater.sh
-REINSTALL_OPTIONS="$(echo "${REINSTALL_OPTIONS}" | sed 's/--dont-wait//g' | sed 's/--dont-start-it//g')"
+REINSTALL_OPTIONS="$(echo "${REINSTALL_OPTIONS}" | sed 's/--dont-wait//g' | sed 's/--dont-start-it//g' | sed 's/--destdir *[^ ]*//g')"
 
 banner_nonroot_install() {
   cat << NONROOTNOPREFIX
@@ -195,6 +195,8 @@ USAGE: ${PROGRAM} [options]
        where options include:
 
   --install-prefix <path>    Install netdata in <path>. Ex. --install-prefix /opt will put netdata in /opt/netdata.
+  --destdir <path>           Install files into <path> as a staging directory for offline installation.
+                             No services will be started and no user accounts will be created.
   --dont-start-it            Do not (re)start netdata after installation.
   --dont-wait                Run installation in non-interactive mode.
   --stable-channel           Use packages from GitHub release pages instead of nightly updates.
@@ -255,6 +257,7 @@ if [ "$(uname -s)" = "Linux" ]; then
 fi
 
 DONOTSTART=0
+NETDATA_DESTDIR=""
 DONOTWAIT=0
 NETDATA_PREFIX=
 LIBS_ARE_HERE=0
@@ -359,6 +362,10 @@ while [ -n "${1}" ]; do
       NETDATA_PREFIX="${2}"
       shift 1
       ;;
+    "--destdir")
+      NETDATA_DESTDIR="${2}"
+      shift 1
+      ;;
     "--prepare-only")
       NETDATA_DISABLE_TELEMETRY=1
       NETDATA_PREPARE_ONLY=1
@@ -380,6 +387,14 @@ while [ -n "${1}" ]; do
   esac
   shift 1
 done
+
+# destdir mode implies --dont-start-it
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  # Remove trailing slash for consistent path joining
+  NETDATA_DESTDIR="${NETDATA_DESTDIR%/}"
+  DONOTSTART=1
+  DONOTWAIT=1
+fi
 
 if [ ! "${DISABLE_TELEMETRY:-0}" -eq 0 ] ||
   [ -n "$DISABLE_TELEMETRY" ] ||
@@ -433,7 +448,7 @@ elif echo "${MAKEOPTS}" | grep -vqF -e "-j"; then
   MAKEOPTS="${MAKEOPTS} -j$(find_processors)"
 fi
 
-if [ "$(id -u)" -ne 0 ] && [ -z "${NETDATA_PREPARE_ONLY}" ]; then
+if [ "$(id -u)" -ne 0 ] && [ -z "${NETDATA_PREPARE_ONLY}" ] && [ -z "${NETDATA_DESTDIR}" ]; then
   if [ -z "${NETDATA_PREFIX}" ]; then
     netdata_banner
     banner_nonroot_install "${@}"
@@ -446,6 +461,17 @@ fi
 
 netdata_banner
 progress "Netdata, X-Ray Vision for your infrastructure!"
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  cat << DESTDIRBANNER
+
+  ${TPUT_BOLD}DESTDIR mode:${TPUT_RESET} installing into staging directory
+   - destdir            at ${TPUT_CYAN}${NETDATA_DESTDIR}${TPUT_RESET}
+
+  No services will be started and no user accounts will be created.
+  The result can be transferred to the target system by unpacking on /.
+
+DESTDIRBANNER
+fi
 cat << BANNER1
 
   You are about to build and install netdata to your system.
@@ -532,11 +558,15 @@ cmake_install() {
     # run cmake --install ${1}
     # The above command should be used to replace the logic below once we no longer support
     # versions of CMake less than 3.15.
+    if [ -n "${NETDATA_DESTDIR}" ]; then
+        export DESTDIR="${NETDATA_DESTDIR}"
+    fi
     if [ -n "${ninja}" ]; then
         run ${ninja} -C "${1}" install
     else
         run ${make} -C "${1}" install
     fi
+    unset DESTDIR 2>/dev/null || true
 }
 
 build_error() {
@@ -593,7 +623,7 @@ fi
 # -----------------------------------------------------------------------------
 # If we have the dashboard switching logic, make sure we're on the classic
 # dashboard during the install (updates don't work correctly otherwise).
-if [ -x "${NETDATA_PREFIX}/usr/libexec/netdata-switch-dashboard.sh" ]; then
+if [ -z "${NETDATA_DESTDIR}" ] && [ -x "${NETDATA_PREFIX}/usr/libexec/netdata-switch-dashboard.sh" ]; then
   "${NETDATA_PREFIX}/usr/libexec/netdata-switch-dashboard.sh" classic
 fi
 
@@ -623,6 +653,12 @@ config_option() {
   key="${2}"
   value="${3}"
 
+  # In destdir mode, we cannot run the installed netdata binary
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    echo "${value}"
+    return
+  fi
+
   if [ -x "${NETDATA_PREFIX}/usr/sbin/netdata" ] && [ -r "${NETDATA_PREFIX}/etc/netdata/netdata.conf" ]; then
     "${NETDATA_PREFIX}/usr/sbin/netdata" \
       -c "${NETDATA_PREFIX}/etc/netdata/netdata.conf" \
@@ -634,15 +670,22 @@ config_option() {
 }
 
 # the user netdata will run as
-if [ "$(id -u)" = "0" ]; then
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  # In destdir mode, use default netdata user/group (target system values)
+  NETDATA_USER="netdata"
+  NETDATA_GROUP="netdata"
+  ROOT_USER="root"
+elif [ "$(id -u)" = "0" ]; then
   NETDATA_USER="$(config_option "global" "run as user" "netdata")"
   ROOT_USER="root"
+  NETDATA_GROUP="$(id -g -n "${NETDATA_USER}" 2> /dev/null)"
+  [ -z "${NETDATA_GROUP}" ] && NETDATA_GROUP="${NETDATA_USER}"
 else
   NETDATA_USER="${USER}"
   ROOT_USER="${USER}"
+  NETDATA_GROUP="$(id -g -n "${NETDATA_USER}" 2> /dev/null)"
+  [ -z "${NETDATA_GROUP}" ] && NETDATA_GROUP="${NETDATA_USER}"
 fi
-NETDATA_GROUP="$(id -g -n "${NETDATA_USER}" 2> /dev/null)"
-[ -z "${NETDATA_GROUP}" ] && NETDATA_GROUP="${NETDATA_USER}"
 echo >&2 "Netdata user and group set to: ${NETDATA_USER}/${NETDATA_GROUP}"
 
 prepare_cmake_options
@@ -693,10 +736,21 @@ if ! cmake_install "${NETDATA_BUILD_DIR}"; then
 fi
 
 # -----------------------------------------------------------------------------
+# In destdir mode, rewrite NETDATA_PREFIX to point into the staging directory
+# for all subsequent filesystem operations. Save the real prefix for use in
+# file contents that should reference the target system paths.
+NETDATA_PREFIX_REAL="${NETDATA_PREFIX}"
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  NETDATA_PREFIX="${NETDATA_DESTDIR}${NETDATA_PREFIX}"
+fi
+
+# -----------------------------------------------------------------------------
 progress "Creating standard user and groups for netdata"
 
 NETDATA_ADDED_TO_GROUPS=""
-if [ "$(id -u)" -eq 0 ]; then
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  progress "Destdir mode: skipping user and group creation"
+elif [ "$(id -u)" -eq 0 ]; then
   create_netdata_accounts
 else
   run_failed "The installer does not run as root. Nothing to do for user and groups"
@@ -724,11 +778,13 @@ NETDATA_PORT="$(config_option "web" "default port" ${defport})"
 
 # directories
 NETDATA_LIB_DIR="$(config_option "global" "lib directory" "${NETDATA_PREFIX}/var/lib/netdata")"
+NETDATA_LIB_DIR_REAL="$(config_option "global" "lib directory" "${NETDATA_PREFIX_REAL}/var/lib/netdata")"
 NETDATA_CACHE_DIR="$(config_option "global" "cache directory" "${NETDATA_PREFIX}/var/cache/netdata")"
 NETDATA_WEB_DIR="$(config_option "global" "web files directory" "${NETDATA_PREFIX}/usr/share/netdata/web")"
 NETDATA_LOG_DIR="$(config_option "global" "log directory" "${NETDATA_PREFIX}/var/log/netdata")"
 NETDATA_USER_CONFIG_DIR="$(config_option "global" "config directory" "${NETDATA_PREFIX}/etc/netdata")"
 NETDATA_STOCK_CONFIG_DIR="$(config_option "global" "stock config directory" "${NETDATA_PREFIX}/usr/lib/netdata/conf.d")"
+NETDATA_STOCK_CONFIG_DIR_REAL="$(config_option "global" "stock config directory" "${NETDATA_PREFIX_REAL}/usr/lib/netdata/conf.d")"
 NETDATA_RUN_DIR="${NETDATA_PREFIX}/var/run"
 NETDATA_CLAIMING_DIR="${NETDATA_LIB_DIR}/cloud.d"
 
@@ -767,7 +823,8 @@ fi
 
 [ ! -d "${NETDATA_STOCK_CONFIG_DIR}" ] && mkdir -p "${NETDATA_STOCK_CONFIG_DIR}"
 [ -L "${NETDATA_USER_CONFIG_DIR}/orig" ] && run rm -f "${NETDATA_USER_CONFIG_DIR}/orig"
-run ln -s "${NETDATA_STOCK_CONFIG_DIR}" "${NETDATA_USER_CONFIG_DIR}/orig"
+# Symlink target must reference the path on the target system, not the build host
+run ln -s "${NETDATA_STOCK_CONFIG_DIR_REAL}" "${NETDATA_USER_CONFIG_DIR}/orig"
 
 
 # --- web dir ---
@@ -867,7 +924,35 @@ set_plugin_privileges() {
   esac
 }
 
-if [ "$(id -u)" -eq 0 ]; then
+# set_plugin_privileges_destdir <filename> <mode> [<capabilities>]
+#
+# DESTDIR variant: no chown or setcap (target user/caps are unavailable on
+# the build host).  Sets chmod 4750 (setuid) or 0750 (restricted) so that
+# the mode bits are baked into the archive for the target system.
+# shellcheck disable=SC2329
+set_plugin_privileges_destdir() {
+  _spp_name="${1}"
+  _spp_mode="${2}"
+  _spp_path="${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/${_spp_name}"
+
+  [ ! -f "${_spp_path}" ] && return 0
+
+  case "${_spp_mode}" in
+    restricted) run chmod 0750 "${_spp_path}" ;;
+    *)          run chmod 4750 "${_spp_path}" ;;
+  esac
+}
+
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  # In destdir mode: set file modes but skip chown/setcap (no target user on build host)
+  run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type d -exec chmod 0755 {} \;
+  run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type f -exec chmod 0644 {} \;
+  run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type f -a -name \*plugin -exec chmod 0750 {} \;
+  run find "${NETDATA_PREFIX}/usr/libexec/netdata" -type f -a -name \*.sh -exec chmod 0755 {} \;
+
+  foreach_privileged_plugin set_plugin_privileges_destdir
+
+elif [ "$(id -u)" -eq 0 ]; then
   # find the admin group
   admin_group=
   test -z "${admin_group}" && get_group root > /dev/null 2>&1 && admin_group="root"
@@ -913,10 +998,13 @@ progress "Install netdata at system init"
 # By default we assume the shutdown/startup of the Netdata Agent are effectively
 # without any system supervisor/init like SystemD or SysV. So we assume the most
 # basic startup/shutdown commands...
-NETDATA_STOP_CMD="${NETDATA_PREFIX}/usr/sbin/netdatacli shutdown-agent"
-NETDATA_START_CMD="${NETDATA_PREFIX}/usr/sbin/netdata"
+# These commands must use the paths on the target system, not the build host
+NETDATA_STOP_CMD="${NETDATA_PREFIX_REAL}/usr/sbin/netdatacli shutdown-agent"
+NETDATA_START_CMD="${NETDATA_PREFIX_REAL}/usr/sbin/netdata"
 
-if grep -q docker /proc/1/cgroup > /dev/null 2>&1; then
+if [ -n "${NETDATA_DESTDIR}" ]; then
+  install_netdata_service || true
+elif grep -q docker /proc/1/cgroup > /dev/null 2>&1; then
   # If docker runs systemd for some weird reason, let the install proceed
   is_systemd_running="NO"
   if command -v pidof > /dev/null 2>&1; then
@@ -954,7 +1042,7 @@ else
 fi
 run chmod 0644 "${NETDATA_PREFIX}/etc/netdata/netdata.conf"
 
-if [ "$(uname)" = "Linux" ]; then
+if [ "$(uname)" = "Linux" ] && [ -z "${NETDATA_DESTDIR}" ]; then
   # -------------------------------------------------------------------------
   progress "Check KSM (kernel memory deduper)"
 
@@ -1000,7 +1088,7 @@ KSM2
   fi
 fi
 
-if [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin" ]; then
+if [ -z "${NETDATA_DESTDIR}" ] && [ -f "${NETDATA_PREFIX}/usr/libexec/netdata/plugins.d/apps.plugin" ]; then
   # -----------------------------------------------------------------------------
   progress "Check apps.plugin"
 
@@ -1039,7 +1127,8 @@ if [ -f "${NETDATA_PREFIX}"/usr/libexec/netdata-uninstaller.sh ]; then
   rm -f "${NETDATA_PREFIX}"/usr/libexec/netdata-uninstaller.sh
 fi
 
-sed "s|ENVIRONMENT_FILE=\"/etc/netdata/.environment\"|ENVIRONMENT_FILE=\"${NETDATA_PREFIX}/etc/netdata/.environment\"|" packaging/installer/netdata-uninstaller.sh > "${NETDATA_PREFIX}/usr/libexec/netdata/netdata-uninstaller.sh"
+# This variable must use the paths on the target system, not the build host
+sed "s|ENVIRONMENT_FILE=\"/etc/netdata/.environment\"|ENVIRONMENT_FILE=\"${NETDATA_PREFIX_REAL}/etc/netdata/.environment\"|" packaging/installer/netdata-uninstaller.sh > "${NETDATA_PREFIX}/usr/libexec/netdata/netdata-uninstaller.sh"
 chmod 750 "${NETDATA_PREFIX}/usr/libexec/netdata/netdata-uninstaller.sh"
 
 # -----------------------------------------------------------------------------
@@ -1072,6 +1161,7 @@ install_netdata_updater || run_failed "Cannot install netdata updater tool."
 progress "Wrap up environment set up"
 
 # Save environment variables
+# These variables must use the paths on the target system, not the build host
 echo >&2 "Preparing .environment file"
 cat << EOF > "${NETDATA_USER_CONFIG_DIR}/.environment"
 # Created by installer
@@ -1080,7 +1170,7 @@ CFLAGS="${CFLAGS}"
 LDFLAGS="${LDFLAGS}"
 MAKEOPTS="${MAKEOPTS}"
 NETDATA_TMPDIR="${TMPDIR}"
-NETDATA_PREFIX="${NETDATA_PREFIX}"
+NETDATA_PREFIX="${NETDATA_PREFIX_REAL}"
 NETDATA_CMAKE_OPTIONS="${NETDATA_CMAKE_OPTIONS}"
 NETDATA_ADDED_TO_GROUPS="${NETDATA_ADDED_TO_GROUPS}"
 INSTALL_UID="$(id -u)"
@@ -1088,7 +1178,7 @@ NETDATA_GROUP="${NETDATA_GROUP}"
 REINSTALL_OPTIONS="${REINSTALL_OPTIONS}"
 RELEASE_CHANNEL="${RELEASE_CHANNEL}"
 IS_NETDATA_STATIC_BINARY="${IS_NETDATA_STATIC_BINARY}"
-NETDATA_LIB_DIR="${NETDATA_LIB_DIR}"
+NETDATA_LIB_DIR="${NETDATA_LIB_DIR_REAL}"
 EOF
 run chmod 0644 "${NETDATA_USER_CONFIG_DIR}/.environment"
 
