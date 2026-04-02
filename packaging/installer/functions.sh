@@ -786,6 +786,37 @@ run_install_service_script() {
 }
 
 install_netdata_service() {
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    # Destdir mode: manually install systemd unit files without starting anything
+    _svc_src="${NETDATA_PREFIX}/usr/lib/netdata/system/systemd"
+    _svc_systemd_dir="${NETDATA_DESTDIR}/usr/lib/systemd/system"
+    _svc_preset_dir="${NETDATA_DESTDIR}/usr/lib/systemd/system-preset"
+    _svc_sysusers_dir="${NETDATA_DESTDIR}/usr/lib/sysusers.d"
+
+    run mkdir -p "${_svc_systemd_dir}" || return 1
+    run mkdir -p "${_svc_preset_dir}" || return 1
+    run mkdir -p "${_svc_sysusers_dir}" || return 1
+
+    if [ -f "${_svc_src}/netdata.service" ]; then
+      run cp "${_svc_src}/netdata.service" "${_svc_systemd_dir}/netdata.service"
+    fi
+    if [ -f "${_svc_src}/netdata-updater.timer" ]; then
+      run cp "${_svc_src}/netdata-updater.timer" "${_svc_systemd_dir}/netdata-updater.timer"
+    fi
+    if [ -f "${_svc_src}/netdata-updater.service" ]; then
+      run cp "${_svc_src}/netdata-updater.service" "${_svc_systemd_dir}/netdata-updater.service"
+    fi
+    if [ -f "${_svc_src}/50-netdata.preset" ]; then
+      run cp "${_svc_src}/50-netdata.preset" "${_svc_preset_dir}/50-netdata.preset"
+    fi
+    # Install sysusers.d config so the target system creates the netdata user on boot
+    if [ -f "${_svc_src}/sysusers/netdata.conf" ]; then
+      run install -m 0644 "${_svc_src}/sysusers/netdata.conf" "${_svc_sysusers_dir}/netdata.conf"
+    fi
+
+    return 0
+  fi
+
   if [ "${UID}" -eq 0 ]; then
     if [ -x "${NETDATA_PREFIX}/usr/libexec/netdata/install-service.sh" ]; then
       run_install_service_script && return 0
@@ -798,6 +829,12 @@ install_netdata_service() {
 }
 
 install_netdata_tmpfiles() {
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    run mkdir -p "${NETDATA_DESTDIR}/usr/lib/tmpfiles.d" || return 1
+    run install -m 0644 -p "${NETDATA_PREFIX}/usr/lib/netdata/system/systemd/tmpfiles/netdata.conf" "${NETDATA_DESTDIR}/usr/lib/tmpfiles.d/netdata.conf" || return 1
+    return 0
+  fi
+
   if [ "${UID}" -eq 0 ]; then
     run mkdir -p /usr/lib/tmpfiles.d || return 1
     run install -m 0644 -p "${NETDATA_PREFIX}/usr/lib/netdata/system/systemd/tmpfiles/netdata.conf" /usr/lib/tmpfiles.d/netdata.conf || return 1
@@ -828,6 +865,32 @@ install_netdata_snmp_trap_log_dir() {
 }
 
 install_netdata_dirs() {
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    # Destdir mode: install tmpfiles config but skip systemd-tmpfiles --create
+    install_netdata_tmpfiles
+
+    # Create directories but skip chown (target user may not exist on build host)
+    for x in "${NETDATA_LIB_DIR}" "${NETDATA_CACHE_DIR}" "${NETDATA_LOG_DIR}"; do
+      if [ ! -d "${x}" ]; then
+        echo >&2 "Creating directory '${x}'"
+        if ! run mkdir -p "${x}"; then
+          warning "Failed to create ${x}, it must be created by hand or the Netdata Agent will not be able to be started."
+        fi
+      fi
+    done
+
+    run chmod 755 "${NETDATA_LOG_DIR}"
+
+    if [ ! -d "${NETDATA_CLAIMING_DIR}" ]; then
+      echo >&2 "Creating directory '${NETDATA_CLAIMING_DIR}'"
+      if ! run mkdir -p "${NETDATA_CLAIMING_DIR}"; then
+        warning "failed to create ${NETDATA_CLAIMING_DIR}, it will need to be created manually."
+      fi
+    fi
+    run chmod 770 "${NETDATA_CLAIMING_DIR}"
+    return
+  fi
+
   _DIRS_INSTALLED=0
   if install_netdata_tmpfiles && command -v systemd-tmpfiles >/dev/null 2>&1 ; then
     systemd-tmpfiles --create /usr/lib/tmpfiles.d/netdata.conf && _DIRS_INSTALLED=1
@@ -1060,6 +1123,13 @@ restart_netdata() {
 install_netdata_logrotate() {
   src="${NETDATA_PREFIX}/usr/lib/netdata/system/logrotate/netdata"
 
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    run mkdir -p "${NETDATA_DESTDIR}/etc/logrotate.d" || return 1
+    run cp "${src}" "${NETDATA_DESTDIR}/etc/logrotate.d/netdata" || return 1
+    run chmod 644 "${NETDATA_DESTDIR}/etc/logrotate.d/netdata"
+    return 0
+  fi
+
   if [ "${UID}" -eq 0 ]; then
     if [ -d /etc/logrotate.d ]; then
       if [ ! -f /etc/logrotate.d/netdata ]; then
@@ -1082,6 +1152,13 @@ install_netdata_logrotate() {
 
 install_netdata_journald_conf() {
   src="${NETDATA_PREFIX}/usr/lib/netdata/system/systemd/journald@netdata.conf"
+
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    run mkdir -p "${NETDATA_DESTDIR}/usr/lib/systemd/journald@netdata.conf.d/" || return 1
+    run cp "${src}" "${NETDATA_DESTDIR}/usr/lib/systemd/journald@netdata.conf.d/netdata.conf" || return 1
+    run chmod 644 "${NETDATA_DESTDIR}/usr/lib/systemd/journald@netdata.conf.d/netdata.conf"
+    return 0
+  fi
 
   [ ! -d /usr/lib/systemd/ ] && return 0
   [ "${UID}" -ne 0 ] && return 1
@@ -1355,12 +1432,33 @@ install_netdata_updater() {
 
   # these files are installed by cmake
   libsysdir="${NETDATA_PREFIX}/usr/lib/netdata/system/systemd/"
-  if [ -d "${libsysdir}" ] && issystemd && [ -n "$(get_systemd_service_dir)" ]; then
-    cat "${libsysdir}/netdata-updater.timer" > "$(get_systemd_service_dir)/netdata-updater.timer"
-    cat "${libsysdir}/netdata-updater.service" > "$(get_systemd_service_dir)/netdata-updater.service"
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    # Destdir mode: install directly to standard systemd path under destdir
+    _upd_destdir_systemd="${NETDATA_DESTDIR}/usr/lib/systemd/system"
+    if [ -d "${libsysdir}" ]; then
+      run mkdir -p "${_upd_destdir_systemd}"
+      if [ -f "${libsysdir}/netdata-updater.timer" ]; then
+        cat "${libsysdir}/netdata-updater.timer" > "${_upd_destdir_systemd}/netdata-updater.timer"
+      fi
+      if [ -f "${libsysdir}/netdata-updater.service" ]; then
+        cat "${libsysdir}/netdata-updater.service" > "${_upd_destdir_systemd}/netdata-updater.service"
+      fi
+    fi
+  else
+    if [ -d "${libsysdir}" ] && issystemd && [ -n "$(get_systemd_service_dir)" ]; then
+      cat "${libsysdir}/netdata-updater.timer" > "$(get_systemd_service_dir)/netdata-updater.timer"
+      cat "${libsysdir}/netdata-updater.service" > "$(get_systemd_service_dir)/netdata-updater.service"
+    fi
   fi
 
-  sed -i -e "s|THIS_SHOULD_BE_REPLACED_BY_INSTALLER_SCRIPT|${NETDATA_USER_CONFIG_DIR}/.environment|" "${NETDATA_PREFIX}/usr/libexec/netdata/netdata-updater.sh" || return 1
+  # The path embedded in the updater script must reference the target system path,
+  # not the destdir-prefixed build host path.
+  if [ -n "${NETDATA_DESTDIR}" ]; then
+    _upd_env_path="${NETDATA_INSTALL_PREFIX}/etc/netdata/.environment"
+  else
+    _upd_env_path="${NETDATA_USER_CONFIG_DIR}/.environment"
+  fi
+  sed -i -e "s|THIS_SHOULD_BE_REPLACED_BY_INSTALLER_SCRIPT|${_upd_env_path}|" "${NETDATA_PREFIX}/usr/libexec/netdata/netdata-updater.sh" || return 1
 
   chmod 0755 "${NETDATA_PREFIX}/usr/libexec/netdata/netdata-updater.sh"
   echo >&2 "Update script is located at ${TPUT_GREEN}${TPUT_BOLD}${NETDATA_PREFIX}/usr/libexec/netdata/netdata-updater.sh${TPUT_RESET}"
