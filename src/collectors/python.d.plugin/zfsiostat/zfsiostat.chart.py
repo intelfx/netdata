@@ -235,42 +235,33 @@ class Device(dblc.Device):
             vdev_id = re.sub(r'[^a-zA-Z0-9_-]', '_', vdev_id)
         return vdev_id
 
+    def classify(self):
+        if self.is_leaf:
+            return 'leaf'
+        elif self.is_toplevel:
+            return 'toplevel'
+        elif self.is_root:
+            return 'root'
+        return 'misc'
+
     def make_chart_family_suffix(self) -> str:
         # XXX: Netdata documentation states that chart family can be used separately from
         #      the chart context to separate charts for different "entities" (devices, etc.)
         #      (while the chart context is supposed to contain the metric type itself),
         #      it does not seem to work that way. Charts with different families, but same context
         #      are combined, and their sidebar sections are also merged together with mangled names.
-        if self.is_leaf:
-            return f'({self.pool} leaf)'
-        elif self.is_toplevel:
-            return f'({self.pool} top-level)'
-        elif self.is_root:
-            return f'({self.pool} root)'
-        return f'({self.pool} misc)'
+        return self.classify()
 
     def make_chart_context_prefix(self) -> str:
         # XXX: chart context ends up as part of the Prometheus time series name.
         #      While we would prefer to keep the vdev "kind" as part of the chart context
         #      because it works better with Netdata UI, this is less convenient for the type
         #      of aggregations we'd like to do in Prometheus.
-        # if self.is_leaf:
-        #     return 'leaf'
-        # elif self.is_toplevel:
-        #     return 'toplevel'
-        # elif self.is_root:
-        #     return 'root'
-        # return 'misc'
+        # return self.classify()
         return None
 
     def make_chart_title_suffix(self) -> str:
-        if self.is_leaf:
-            return f'({self.pool} leaf)'
-        elif self.is_toplevel:
-            return f'({self.pool} top-level)'
-        elif self.is_root:
-            return f'({self.pool} root)'
-        return f'({self.pool} misc)'
+        return f'({self.pool} {self.classify()})'
 
     def make_chart_id_prefix(self) -> str:
         return self.vdev_id(with_pool=True, escape=True)
@@ -279,6 +270,7 @@ class Device(dblc.Device):
         labels = {
             'pool': self.pool,
             'vdev': self.vdev_id(transform=True),
+            'vdev_class': self.classify(),
             'vdev_is_root': self.is_root,
             'vdev_is_toplevel': self.is_toplevel,
             'vdev_is_leaf': self.is_leaf,
