@@ -644,6 +644,13 @@ static int prometheus_rrdset_to_json(RRDSET *st, void *data)
         prometheus_label_copy(family, rrdset_family(st), sizeof(family));
         prometheus_name_copy(context, rrdset_context(st), sizeof(context));
 
+        // When PROMETHEUS_OUTPUT_NAMES_SMART is set, use dimension IDs (instead of names)
+        // to generate dimension= label on heatmap charts, so that Prometheus/Grafana
+        // can render histograms properly, while still using human-readable names elsewhere.
+        int use_dimension_names = (output_options & PROMETHEUS_OUTPUT_NAMES) &&
+                                  !((output_options & PROMETHEUS_OUTPUT_NAMES_SMART) &&
+                                    st->chart_type == RRDSET_TYPE_HEATMAP);
+
         if(opts->output_options & PROMETHEUS_OUTPUT_HELP_TYPE) {
             // we do not want to print HELP and TYPE for the same context twice
             STRING *context_id = string_strdupz(context);
@@ -733,7 +740,7 @@ static int prometheus_rrdset_to_json(RRDSET *st, void *data)
 
                         prometheus_label_copy(
                             dimension,
-                            (output_options & PROMETHEUS_OUTPUT_NAMES && rd->name) ? rrddim_name(rd) : rrddim_id(rd),
+                            (use_dimension_names && rd->name) ? rrddim_name(rd) : rrddim_id(rd),
                             sizeof(dimension));
                     }
                     else {
@@ -742,7 +749,7 @@ static int prometheus_rrdset_to_json(RRDSET *st, void *data)
 
                         prometheus_name_copy(
                             dimension,
-                            (output_options & PROMETHEUS_OUTPUT_NAMES && rd->name) ? rrddim_name(rd) : rrddim_id(rd),
+                            (use_dimension_names && rd->name) ? rrddim_name(rd) : rrddim_id(rd),
                             sizeof(dimension));
                     }
                     generate_as_collected_from_metric(wb, &p, homogeneous, prometheus_collector, st->rrdlabels);
@@ -762,7 +769,7 @@ static int prometheus_rrdset_to_json(RRDSET *st, void *data)
 
                         prometheus_label_copy(
                             dimension,
-                            (output_options & PROMETHEUS_OUTPUT_NAMES && rd->name) ? rrddim_name(rd) : rrddim_id(rd),
+                            (use_dimension_names && rd->name) ? rrddim_name(rd) : rrddim_id(rd),
                             sizeof(dimension));
 
                         if (opts->output_options & PROMETHEUS_OUTPUT_HELP_TYPE) {
