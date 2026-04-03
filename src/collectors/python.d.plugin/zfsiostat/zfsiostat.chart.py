@@ -211,7 +211,7 @@ class Device(dblc.Device):
     is_leaf: bool = False  # whether the vdev is a leaf vdev (@path is not None)
     is_toplevel: bool = False  # whether the vdev is a "top-level" vdev
 
-    def vdev_id(self, transform=False):
+    def vdev_id(self, transform=False, with_pool=False, escape=False):
         """
         Return the ZFS-internal identifier of the vdev (`self.vdev`)
         @param transform: transform `self.vdev` into a string better correlated
@@ -228,6 +228,11 @@ class Device(dblc.Device):
             # replace trailing component (abstract label such as "disk-3") with the actual device name
             if (s := vdev_id.rpartition('/')) and s[0] and self.path is not None:
                 vdev_id = s[0] + s[1] + os.path.basename(self.path)
+        elif with_pool:
+            # drop leading "root" unless that's the entire name (i.e., root vdev)
+            vdev_id = f'{self.pool}/{vdev_id.removeprefix("root/")}'
+        if escape:
+            vdev_id = re.sub(r'[^a-zA-Z0-9_-]', '_', vdev_id)
         return vdev_id
 
     def make_chart_family_suffix(self) -> str:
@@ -268,10 +273,7 @@ class Device(dblc.Device):
         return f'({self.pool} misc)'
 
     def make_chart_id_prefix(self) -> str:
-        _WANT_ESCAPING = False
-        # drop leading "root" unless that's the entire name (i.e., root vdev)
-        vdev_id = f'{self.pool}/{self.vdev.removeprefix("root/")}'
-        return re.sub(r'[^a-zA-Z0-9_-]', '_', vdev_id) if _WANT_ESCAPING else vdev_id
+        return self.vdev_id(with_pool=True, escape=True)
 
     def make_chart_labels(self) -> dict[str, str]:
         labels = {
