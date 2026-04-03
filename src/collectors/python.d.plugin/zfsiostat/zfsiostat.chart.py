@@ -211,6 +211,25 @@ class Device(dblc.Device):
     is_leaf: bool = False  # whether the vdev is a leaf vdev (@path is not None)
     is_toplevel: bool = False  # whether the vdev is a "top-level" vdev
 
+    def vdev_id(self, transform=False):
+        """
+        Return the ZFS-internal identifier of the vdev (`self.vdev`)
+        @param transform: transform `self.vdev` into a string better correlated
+                          with the output of `zpool list -v`, e.g.:
+                          `root/mirror-1/disk-2` -> `poolname/mirror-1/diskname`
+        @param with_pool: if @transform is False, prepend the pool name instead
+        @param escape: escape the vdev name with underscores
+        """
+        vdev_id = self.vdev
+        if transform:
+            # replace leading "root" with the pool name
+            if (s := vdev_id.partition('/')) and s[0] == 'root':
+                vdev_id = self.pool + s[1] + s[2]
+            # replace trailing component (abstract label such as "disk-3") with the actual device name
+            if (s := vdev_id.rpartition('/')) and s[0] and self.path is not None:
+                vdev_id = s[0] + s[1] + os.path.basename(self.path)
+        return vdev_id
+
     def make_chart_family_suffix(self) -> str:
         # XXX: Netdata documentation states that chart family can be used separately from
         #      the chart context to separate charts for different "entities" (devices, etc.)
@@ -257,7 +276,7 @@ class Device(dblc.Device):
     def make_chart_labels(self) -> dict[str, str]:
         labels = {
             'pool': self.pool,
-            'vdev': self.vdev,
+            'vdev': self.vdev_id(transform=True),
             'vdev_is_root': self.is_root,
             'vdev_is_toplevel': self.is_toplevel,
             'vdev_is_leaf': self.is_leaf,
