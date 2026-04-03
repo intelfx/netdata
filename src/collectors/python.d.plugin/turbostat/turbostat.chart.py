@@ -572,8 +572,12 @@ class Service(dblc.Service):
             return self._get_data(check=False, turbostat=self.turbostat)
         except queue.ShutDown:
             # turbostat died
-            self.error(f'Turbostat exited unexpectedly, restarting')
-            self.turbostat.stop()
+            try:
+                self.turbostat.stop()
+            except ErrorException as e:
+                self.error(f'Restarting turbostat: ', *e.args)
+            else:
+                self.error(f'Turbostat exited unexpectedly, restarting')
             self.turbostat.run()
             return None
         except NoDataException:
