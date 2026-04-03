@@ -238,7 +238,7 @@ class Chart:
     device: Device
 
     def make_chart_family(self) -> str:
-        return ' '.join(x for x in (
+        return '/'.join(x for x in (
             self.proto.family_name or self.proto.title,
             self.instance.family if self.instance is not None else None,
             self.device.make_chart_family_suffix(),
