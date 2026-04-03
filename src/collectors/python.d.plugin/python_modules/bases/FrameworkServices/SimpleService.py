@@ -252,8 +252,8 @@ class SimpleService(PythonDLogger, object):
 
         return updated
 
-    def get_data(self):
+    def get_data(self) -> dict:
         return self._get_data()
 
-    def _get_data(self):
+    def _get_data(self) -> dict:
         raise NotImplementedError
