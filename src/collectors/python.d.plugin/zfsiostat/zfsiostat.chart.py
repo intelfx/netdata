@@ -164,7 +164,7 @@ CHART_PROTO = [
         representation=ChartType.COUNTER | ChartType.HISTOGRAM,
         name='io_size',
         title='I/O size',
-        unit_name='bytes',
+        unit_name='operations',
     ),
 
     ChartProto(
