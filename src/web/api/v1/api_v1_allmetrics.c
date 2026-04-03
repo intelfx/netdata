@@ -17,6 +17,7 @@ struct prometheus_output_options {
     PROMETHEUS_OUTPUT_OPTIONS flag;
 } prometheus_output_flags_root[] = {
     { "names",      PROMETHEUS_OUTPUT_NAMES      },
+    { "smartnames", PROMETHEUS_OUTPUT_NAMES | PROMETHEUS_OUTPUT_NAMES_SMART },
     { "timestamps", PROMETHEUS_OUTPUT_TIMESTAMPS },
     { "variables",  PROMETHEUS_OUTPUT_VARIABLES  },
     { "oldunits",   PROMETHEUS_OUTPUT_OLDUNITS   },
