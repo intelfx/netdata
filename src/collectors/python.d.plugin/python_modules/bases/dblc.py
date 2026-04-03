@@ -288,7 +288,6 @@ class ChartBuilder:
     @staticmethod
     def make_dim_id(chart: Chart, data_point: ChartDataPoint):
         return '_'.join(x for x in (
-            chart.make_chart_id(),
             chart.device.make_dim_id() if data_point.dim_proto.per_device else None,
             data_point.dim_proto.id,
         ) if x is not None)
@@ -299,6 +298,18 @@ class ChartBuilder:
             chart.device.make_dim_label() if data_point.dim_proto.per_device else None,
             data_point.dim_proto.label,
         ) if x is not None)
+
+    @staticmethod
+    def make_dim_key(chart: Chart, data_point: ChartDataPoint):
+        # bases.SimpleService uses a single dictionary for all data points of all charts,
+        # which is normally keyed with the dimension ID.
+        # To avoid embedding chart ID into the dimension ID (which is user-visible),
+        # this dictionary can be instead keyed by 2-tuple of (chart id, dim id)
+        # to prevent key collisions.
+        return (
+            chart.make_chart_id(),
+            ChartBuilder.make_dim_id(chart, data_point),
+        )
 
     def make_chart(self, chart: Chart, data: list[ChartDataPoint]):
         """
@@ -390,7 +401,7 @@ class ChartBuilder:
 
     def build_data(self) -> Optional[dict[str, int]]:
         return {
-            ChartBuilder.make_dim_id(chart, data_point):
+            ChartBuilder.make_dim_key(chart, data_point):
                 int(data_point.value * chart.proto.get_store_ratio())
             for chart, data in self.data_points.items()
             for data_point in data
