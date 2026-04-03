@@ -115,8 +115,9 @@ class Turbostat:
 
     def stop(self):
         if self.reader_thread is not None:
-            self.service.info(f"Stopping turbostat: PID {self.subprocess.pid}")
-            self.subprocess.send_signal(signal.SIGINT)
+            if self.subprocess.returncode is None:
+                self.service.info(f"Stopping turbostat: PID {self.subprocess.pid}")
+                self.subprocess.send_signal(signal.SIGINT)
             self.reader_thread.join()
             self.reader_thread = None
             self.subprocess = None
