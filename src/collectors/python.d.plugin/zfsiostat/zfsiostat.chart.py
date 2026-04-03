@@ -132,6 +132,7 @@ CHART_PROTO = [
         representation=ChartType.COUNTER,
         name='iops',
         title='I/O',
+        family_name='IOPS',
         unit_name='operations',
         dimensions=(
             DimProto(source='read_ops', id='read', label='Read'),
@@ -156,6 +157,7 @@ CHART_PROTO = [
         representation=ChartType.COUNTER | ChartType.HISTOGRAM,
         name='io_latency',
         title='I/O latency',
+        family_name='IO latency',
         unit_name='operations',
     ),
 
@@ -164,6 +166,7 @@ CHART_PROTO = [
         representation=ChartType.COUNTER | ChartType.HISTOGRAM,
         name='io_size',
         title='I/O size',
+        family_name='IO size',
         unit_name='operations',
     ),
 
