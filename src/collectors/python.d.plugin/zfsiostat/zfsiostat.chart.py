@@ -207,9 +207,17 @@ class Device(dblc.Device):
     pool: str  # ZFS pool name
     vdev: str  # abstract ZFS vdev name (e.g., "root/raidz-0/disk0")
     path: Optional[str] = None  # path to the physical device node of a leaf vdev
-    is_root: bool = False  # whether the vdev is a root vdev (@vdev == "root")
-    is_leaf: bool = False  # whether the vdev is a leaf vdev (@path is not None)
-    is_toplevel: bool = False  # whether the vdev is a "top-level" vdev
+    vdev_is_class: dict[str, bool]  # possible vdev classes and whether this one belongs to them
+    """NOTE: vdev_is_class must not be modified (this structure is used as part of a key)"""
+
+    def __hash__(self):
+        # Python does not have frozendict; sunrise by hand (also see bases.dblc.ChartInstance)
+        return hash((
+            self.pool,
+            self.vdev,
+            self.path,
+            tuple(self.vdev_is_class.items())
+        ))
 
     def vdev_id(self, transform=False, with_pool=False, escape=False):
         """
@@ -235,14 +243,20 @@ class Device(dblc.Device):
             vdev_id = re.sub(r'[^a-zA-Z0-9_-]', '_', vdev_id)
         return vdev_id
 
+    def is_(self, kind: str) -> bool:
+        return self.vdev_is_class.get(kind, False)
+    @property
+    def is_root(self) -> bool: return self.is_('root')
+    @property
+    def is_leaf(self) -> bool: return self.is_('leaf')
+    @property
+    def is_toplevel(self) -> bool: return self.is_('toplevel')
+
     def classify(self):
-        if self.is_leaf:
-            return 'leaf'
-        elif self.is_toplevel:
-            return 'toplevel'
-        elif self.is_root:
-            return 'root'
-        return 'misc'
+        try:
+            return next(k for k, v in self.vdev_is_class.items() if v)
+        except StopIteration:
+            return 'misc'
 
     def make_chart_family_suffix(self) -> str:
         # XXX: Netdata documentation states that chart family can be used separately from
@@ -270,9 +284,10 @@ class Device(dblc.Device):
             'pool': self.pool,
             'vdev': self.vdev_id(transform=True),
             'vdev_class': self.classify(),
-            'vdev_is_root': self.is_root,
-            'vdev_is_toplevel': self.is_toplevel,
-            'vdev_is_leaf': self.is_leaf,
+        } | {
+            f'vdev_is_{k}': str(v)
+            for k, v
+            in self.vdev_is_class.items()
         }
         if self.path is not None:
             labels['vdev_path'] = self.path
@@ -372,9 +387,16 @@ class Service(dblc.Service):
                 pool=pool,
                 vdev=vdev,
                 path=vdev_path,
-                is_root=vdev == 'root',
-                is_leaf=vdev_path is not None,
-                is_toplevel=vdev.count('/') == 1,
+                vdev_is_class={
+                    'root': vdev == 'root',
+                    'leaf': vdev_path is not None,
+                    # FIXME: do we want to consider only non-root non-leaf vdevs
+                    # as toplevel (i.e., stripe/mirror containers) or literally
+                    # every depth=1 vdev in the hierarchy (which will overlap
+                    # with leaf vdevs that do not participate in a stripe/mirror)?
+                    # 'toplevel': vdev.count('/') == 1,
+                    'toplevel': vdev != 'root' and vdev_path is None,
+                },
             )
 
             def _extract(*, proto: ChartProto, instance: Optional[ChartInstance]):
