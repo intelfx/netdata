@@ -398,8 +398,25 @@ class Service(dblc.Service):
                     'toplevel': vdev != 'root' and vdev_path is None,
                 },
             )
+            # For the capacity chart, the toplevel/leaf distinction makes no
+            # sense because all non-root capacities can be summed together
+            # (their sum will be equal to the root vdev reported capacity).
+            # Thus, it only makes sense to group vdevs into two classes
+            # (root and everything else).
+            # Same principle applies for the fragmentation chart, except that
+            # root vdev fragmentation is not reported at all (it only exists
+            # in the zpool CLI as an average of the actually reported values).
+            device_for_capacity = Device(
+                pool=pool,
+                vdev=vdev,
+                path=vdev_path,
+                vdev_is_class={
+                    'root': vdev == 'root',
+                    'vdev': vdev != 'root',
+                },
+            )
 
-            def _extract(*, proto: ChartProto, instance: Optional[ChartInstance]):
+            def _extract(*, proto: ChartProto, instance: Optional[ChartInstance], device: Device = device):
                 Service._extract_dimensions(
                     builder=chart_builder,
                     point=point,
@@ -416,18 +433,17 @@ class Service(dblc.Service):
 
                 alloc_stats = point.get_dims('alloc', 'free', 'size')
                 if any(v != 0 for v in alloc_stats.values()):
-                    _extract(proto=CHART_PROTO_FROM_NAME['capacity'], instance=instance)
-                # FIXME: fragmentation seems to only be valid for "top-level" vdevs (i.e., not
-                #        mirror/stripe children, and not the root vdev). I'm not sure if the above
-                #        condition is valid in all cases and possible topologies, so for now replace
-                #        the "top-level" condition with a check whether alloc/free/size are nonzero.
-                #        This should exclude mirror/stripe children (vdevs which are not allocation
-                #        targets). Additionally, exclude the root vdev, because internally its
-                #        fragmentation is not reported by libzfs even if its alloc/free/size are
-                #        nonzero. What we see in `zpool status` is computed by the CLI, presumably
-                #        as an average of some sort.
+                    _extract(proto=CHART_PROTO_FROM_NAME['capacity'], instance=instance, device=device_for_capacity)
+                # NOTE: fragmentation is only valid for the "top-level" aka "allocatable" vdevs
+                #       (i.e., not mirror/stripe children, and not the root vdev).
+                #       Thus, we should apply the same condition as for the capacity chart.
+                #       This should exclude mirror/stripe children (vdevs which are not allocation
+                #       targets). Additionally, exclude the root vdev, because internally its
+                #       fragmentation is not reported by libzfs even if its alloc/free/size are
+                #       nonzero. What we see in `zpool status` is computed by the CLI, presumably
+                #       as an average of some sort.
                 if not device.is_root and any(v != 0 for v in alloc_stats.values()):
-                    _extract(proto=CHART_PROTO_FROM_NAME['fragmentation'], instance=instance)
+                    _extract(proto=CHART_PROTO_FROM_NAME['fragmentation'], instance=instance, device=device_for_capacity)
 
                 _extract(proto=CHART_PROTO_FROM_NAME['bandwidth'], instance=instance)
                 _extract(proto=CHART_PROTO_FROM_NAME['iops'], instance=instance)
