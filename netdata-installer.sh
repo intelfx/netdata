@@ -1123,20 +1123,30 @@ set -e
 PREFIX="${NETDATA_PREFIX_REAL}"
 NETDATA_USER="${NETDATA_USER}"
 NETDATA_GROUP="${NETDATA_GROUP}"
+# NETDATA_SYSUSERS_FILE="/usr/lib/sysusers.d/netdata.conf"
+# NETDATA_TMPFILES_FILE="/usr/lib/tmpfiles.d/netdata.conf"
+NETDATA_SYSUSERS_FILE="\${PREFIX}/usr/lib/netdata/system/systemd/sysusers/netdata.conf"
+NETDATA_TMPFILES_FILE="\${PREFIX}/usr/lib/netdata/system/systemd/tmpfiles/netdata.conf"
 DEPLOY_HEAD
 
   # --- Part 2: body (literal — no expansion) ---
   cat >> "${_deploy_script}" << 'DEPLOY_BODY'
 LIBEXEC="${PREFIX}/usr/libexec/netdata"
 PLUGDIR="${LIBEXEC}/plugins.d"
-DO_START=1
+DO_START=0
+DO_CREATE_USER=0
+DO_CREATE_DIRS=0
 
 for _arg; do
   case "${_arg}" in
-    --no-start) DO_START=0 ;;
+    --do-start) DO_START=1 ;;
+    --do-create-user) DO_CREATE_USER=1 ;;
+    --do-create-dirs) DO_CREATE_DIRS=1 ;;
     --help|-h)
-      echo "Usage: $0 [--no-start]"
-      echo "  --no-start  Do not enable/start the netdata service."
+      echo "Usage: $0 [--do-start] [--do-create-user] [--do-create-dirs]"
+      echo "  --do-start        Enable/start the netdata service."
+      echo "  --do-create-user  Create the netdata user."
+      echo "  --do-create-dirs  Create the runtime and state directories."
       exit 0
       ;;
     *)
@@ -1151,55 +1161,60 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-# =========================================================================
-echo "==> Creating netdata user and group"
-# =========================================================================
+if [ "${DO_CREATE_USER}" -eq 1 ]; then
+  # =========================================================================
+  echo "==> Creating netdata user and group"
+  # =========================================================================
 
-if command -v systemd-sysusers >/dev/null 2>&1 && [ -f /usr/lib/sysusers.d/netdata.conf ]; then
-  systemd-sysusers /usr/lib/sysusers.d/netdata.conf
-else
-  if command -v getent >/dev/null 2>&1; then
-    getent group "${NETDATA_GROUP}" >/dev/null 2>&1 || groupadd -r "${NETDATA_GROUP}"
-    getent passwd "${NETDATA_USER}" >/dev/null 2>&1 || \
-      useradd -r -g "${NETDATA_GROUP}" -c netdata \
-        -s "$(command -v nologin || echo /bin/false)" \
-        --no-create-home -d "${PREFIX}/var/lib/netdata" "${NETDATA_USER}"
+  if command -v systemd-sysusers >/dev/null 2>&1 && [ -f "${NETDATA_SYSUSERS_FILE}" ]; then
+    systemd-sysusers "${NETDATA_SYSUSERS_FILE}"
   else
-    grep -q "^${NETDATA_GROUP}:" /etc/group  2>/dev/null || groupadd -r "${NETDATA_GROUP}"
-    grep -q "^${NETDATA_USER}:" /etc/passwd 2>/dev/null || \
-      useradd -r -g "${NETDATA_GROUP}" -c netdata \
-        -s "$(command -v nologin || echo /bin/false)" \
-        --no-create-home -d "${PREFIX}/var/lib/netdata" "${NETDATA_USER}"
+    if command -v getent >/dev/null 2>&1; then
+      getent group "${NETDATA_GROUP}" >/dev/null 2>&1 || groupadd -r "${NETDATA_GROUP}"
+      getent passwd "${NETDATA_USER}" >/dev/null 2>&1 || \
+        useradd -r -g "${NETDATA_GROUP}" -c netdata \
+          -s "$(command -v nologin || echo /bin/false)" \
+          --no-create-home -d "${PREFIX}/var/lib/netdata" "${NETDATA_USER}"
+    else
+      grep -q "^${NETDATA_GROUP}:" /etc/group  2>/dev/null || groupadd -r "${NETDATA_GROUP}"
+      grep -q "^${NETDATA_USER}:" /etc/passwd 2>/dev/null || \
+        useradd -r -g "${NETDATA_GROUP}" -c netdata \
+          -s "$(command -v nologin || echo /bin/false)" \
+          --no-create-home -d "${PREFIX}/var/lib/netdata" "${NETDATA_USER}"
+    fi
   fi
-fi
 
-# Add netdata to supplementary groups when available
-for g in docker ceph I2C; do
-  if command -v getent >/dev/null 2>&1; then
-    getent group "${g}" >/dev/null 2>&1 && usermod -a -G "${g}" "${NETDATA_USER}" 2>/dev/null || true
-  elif grep -q "^${g}:" /etc/group 2>/dev/null; then
-    usermod -a -G "${g}" "${NETDATA_USER}" 2>/dev/null || true
-  fi
-done
-[ -d "/etc/pve" ]      && usermod -a -G www-data "${NETDATA_USER}" 2>/dev/null || true
-[ -e "/dev/nvidiactl" ] && usermod -a -G video    "${NETDATA_USER}" 2>/dev/null || true
-
-# =========================================================================
-echo "==> Creating runtime directories"
-# =========================================================================
-
-if command -v systemd-tmpfiles >/dev/null 2>&1 && [ -f /usr/lib/tmpfiles.d/netdata.conf ]; then
-  systemd-tmpfiles --create /usr/lib/tmpfiles.d/netdata.conf
-else
-  for _d in "${PREFIX}/var/lib/netdata" "${PREFIX}/var/cache/netdata" "${PREFIX}/var/log/netdata"; do
-    mkdir -p "${_d}"
-    chown "${NETDATA_USER}:${NETDATA_GROUP}" "${_d}"
+  # Add netdata to supplementary groups when available
+  for g in docker ceph I2C; do
+    if command -v getent >/dev/null 2>&1; then
+      getent group "${g}" >/dev/null 2>&1 && usermod -a -G "${g}" "${NETDATA_USER}" 2>/dev/null || true
+    elif grep -q "^${g}:" /etc/group 2>/dev/null; then
+      usermod -a -G "${g}" "${NETDATA_USER}" 2>/dev/null || true
+    fi
   done
-  chmod 755 "${PREFIX}/var/log/netdata"
-  mkdir -p "${PREFIX}/var/lib/netdata/cloud.d"
-  chown "${NETDATA_USER}:${NETDATA_GROUP}" "${PREFIX}/var/lib/netdata/cloud.d"
-  chmod 770 "${PREFIX}/var/lib/netdata/cloud.d"
-fi
+  [ -d "/etc/pve" ]      && usermod -a -G www-data "${NETDATA_USER}" 2>/dev/null || true
+  [ -e "/dev/nvidiactl" ] && usermod -a -G video    "${NETDATA_USER}" 2>/dev/null || true
+
+fi # DO_CREATE_USER
+
+if [ "${DO_CREATE_DIRS}" -eq 1 ]; then
+  # =========================================================================
+  echo "==> Creating runtime directories"
+  # =========================================================================
+
+  if command -v systemd-tmpfiles >/dev/null 2>&1 && [ -f "${NETDATA_TMPFILES_FILE}" ]; then
+    systemd-tmpfiles --create "${NETDATA_TMPFILES_FILE}"
+  else
+    for _d in "${PREFIX}/var/lib/netdata" "${PREFIX}/var/cache/netdata" "${PREFIX}/var/log/netdata"; do
+      mkdir -p "${_d}"
+      chown "${NETDATA_USER}:${NETDATA_GROUP}" "${_d}"
+    done
+    chmod 755 "${PREFIX}/var/log/netdata"
+    mkdir -p "${PREFIX}/var/lib/netdata/cloud.d"
+    chown "${NETDATA_USER}:${NETDATA_GROUP}" "${PREFIX}/var/lib/netdata/cloud.d"
+    chmod 770 "${PREFIX}/var/lib/netdata/cloud.d"
+  fi
+fi # DO_CREATE_DIRS
 
 # =========================================================================
 echo "==> Setting file ownership and base modes"
@@ -1286,19 +1301,17 @@ DEPLOY_BODY
   # --- Part 4: footer (literal) ---
   cat >> "${_deploy_script}" << 'DEPLOY_FOOT'
 
+if [ "${DO_START}" -eq 1 ]; then
 # =========================================================================
 echo "==> Enabling netdata service"
 # =========================================================================
 
-if [ "${DO_START}" -eq 1 ]; then
   if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload 2>/dev/null || true
     systemctl enable --now netdata 2>/dev/null || echo "  (systemctl enable/start failed — start netdata manually)"
   else
     echo "  systemctl not found — start netdata manually."
   fi
-else
-  echo "  Skipped (--no-start)."
 fi
 
 echo ""
