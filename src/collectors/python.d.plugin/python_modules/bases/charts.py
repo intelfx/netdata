@@ -266,7 +266,7 @@ class Chart:
 
     def can_be_updated(self, data):
         for dim in self.dimensions:
-            if dim.get_value(data) is not None:
+            if dim.get_value(data, self) is not None:
                 return True
         return False
 
@@ -274,12 +274,12 @@ class Chart:
         updated_dimensions, updated_variables = str(), str()
 
         for dim in self.dimensions:
-            value = dim.get_value(data)
+            value = dim.get_value(data, self)
             if value is not None:
                 updated_dimensions += dim.set(value)
 
         for var in self.variables:
-            value = var.get_value(data)
+            value = var.get_value(data, self)
             if value is not None:
                 updated_variables += var.set(value)
 
@@ -370,9 +370,10 @@ class Dimension:
         return DIMENSION_SET.format(id=self.id,
                                     value=value)
 
-    def get_value(self, data):
+    def get_value(self, data, chart):
         try:
-            return int(data[self.id])
+            try: return int(data[(chart.id, self.id)])
+            except KeyError: return int(data[self.id])
         except (KeyError, TypeError):
             return None
 
@@ -426,9 +427,10 @@ class ChartVariable:
         return CHART_VARIABLE_SET.format(id=self.id,
                                          value=value)
 
-    def get_value(self, data):
+    def get_value(self, data, chart):
         try:
-            return int(data[self.id])
+            try: return int(data[(chart.id, self.id)])
+            except KeyError: return int(data[self.id])
         except (KeyError, TypeError):
             return None
 
