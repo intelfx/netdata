@@ -575,7 +575,7 @@ class Service(dblc.Service):
             self.error(*e.args)
             return None
         except Exception as e:
-            self.error(f'Failed to get data: {e}')
+            self.error(f'Failed to get data: {type(e)}: {e}')
             return None
 
     def check(self):
@@ -588,7 +588,7 @@ class Service(dblc.Service):
             self.error(*e.args)
             return None
         except Exception as e:
-            self.error(f'Failed to get data: {type(e)} {e}')
+            self.error(f'Failed to get data: {type(e)}: {e}')
             return None
         except:
             return None
