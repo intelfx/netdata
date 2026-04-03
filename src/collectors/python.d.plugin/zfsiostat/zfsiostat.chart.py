@@ -501,8 +501,9 @@ class Service(dblc.Service):
                 #      (e.g., "1 us" or "100 ms" instead of "0.000001" and "0.1") for dimension
                 #      labels, because Grafana requires dimension labels to be raw numeric values
                 #      when using them as Y-axis on heatmaps.
+                # XXX: this should be obsolete now, use &autonames=1
                 bucket_id = f"{int(float(bucket) * 1e9)}" if bucket != '+Inf' else 'inf'
-                bucket_label = bucket
+                bucket_label = format_duration(float(bucket))
 
                 proto = CHART_PROTO_FROM_NAME['io_latency']
                 for key, value in point.dimensions.items():
@@ -551,8 +552,9 @@ class Service(dblc.Service):
                     return f"{int(bytes_)}{u}"
 
                 # XXX: see above for an explanation why we are not pretty-printing dimension labels
+                # XXX: this should be obsolete now, use &autonames=1
                 bucket_id = f"{int(bucket)}" if bucket != '+Inf' else 'inf'
-                bucket_label = bucket
+                bucket_label = format_bytes(float(bucket))
 
                 proto = CHART_PROTO_FROM_NAME['io_size']
                 for key, value in point.dimensions.items():
