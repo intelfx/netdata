@@ -17,7 +17,7 @@ struct prometheus_output_options {
     PROMETHEUS_OUTPUT_OPTIONS flag;
 } prometheus_output_flags_root[] = {
     { "names",      PROMETHEUS_OUTPUT_NAMES      },
-    { "smartnames", PROMETHEUS_OUTPUT_NAMES | PROMETHEUS_OUTPUT_NAMES_SMART },
+    { "smartnames", PROMETHEUS_OUTPUT_NAMES_SMART },
     { "timestamps", PROMETHEUS_OUTPUT_TIMESTAMPS },
     { "variables",  PROMETHEUS_OUTPUT_VARIABLES  },
     { "oldunits",   PROMETHEUS_OUTPUT_OLDUNITS   },
@@ -205,7 +205,9 @@ int api_v1_allmetrics(RRDHOST *host, struct web_client *w, char *url) {
 
     PROMETHEUS_OUTPUT_OPTIONS prometheus_output_options =
         PROMETHEUS_OUTPUT_TIMESTAMPS |
-        ((prometheus_exporting_options & EXPORTING_OPTION_SEND_NAMES) ? PROMETHEUS_OUTPUT_NAMES : 0);
+        ((prometheus_exporting_options & EXPORTING_OPTION_SEND_NAMES)
+        	? (PROMETHEUS_OUTPUT_NAMES | PROMETHEUS_OUTPUT_NAMES_SMART)
+        	: 0);
 
     const char *prometheus_prefix;
     if (prometheus_exporter_instance)
