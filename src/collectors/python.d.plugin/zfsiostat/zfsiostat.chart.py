@@ -394,8 +394,10 @@ class Service(dblc.Service):
                     # as toplevel (i.e., stripe/mirror containers) or literally
                     # every depth=1 vdev in the hierarchy (which will overlap
                     # with leaf vdevs that do not participate in a stripe/mirror)?
-                    # 'toplevel': vdev.count('/') == 1,
-                    'toplevel': vdev != 'root' and vdev_path is None,
+                    # 'toplevel': vdev != 'root' and vdev_path is None,
+                    # NOTE that some vdevs will be both toplevel and leaf,
+                    # so insertion order matters
+                    'toplevel': vdev.count('/') == 1,
                 },
             )
             # For the capacity chart, the toplevel/leaf distinction makes no
