@@ -257,8 +257,7 @@ class Device(dblc.Device):
         #      While we would prefer to keep the vdev "kind" as part of the chart context
         #      because it works better with Netdata UI, this is less convenient for the type
         #      of aggregations we'd like to do in Prometheus.
-        # return self.classify()
-        return None
+        return self.classify()
 
     def make_chart_title_suffix(self) -> str:
         return f'({self.pool} {self.classify()})'
