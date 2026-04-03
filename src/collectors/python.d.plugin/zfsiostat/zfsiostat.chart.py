@@ -260,7 +260,7 @@ class Device(dblc.Device):
         return self.classify()
 
     def make_chart_title_suffix(self) -> str:
-        return f'({self.pool} {self.classify()})'
+        return f'({self.classify()})'
 
     def make_chart_id_prefix(self) -> str:
         return self.vdev_id(with_pool=True, escape=True)
